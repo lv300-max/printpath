@@ -1,0 +1,1586 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <!-- ============================================================
+       PrintPath — Design it. We make it print-perfect.
+       PWA Single Page App · Vanilla JS · Mobile-First
+       ============================================================ -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="PrintPath — From idea to production. AI-powered. Print-perfect. From prompt to production." />
+  <meta name="theme-color" content="#00e5a0" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="PrintPath" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="PrintPath — From idea to production." />
+  <meta property="og:description" content="AI-built. Print-perfect. Made for people who want it done right the first time." />
+  <meta property="og:type" content="website" />
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json" />
+
+  <!-- Apple Touch Icons -->
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-128.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/icon-72.png" />
+
+  <!-- Google Fonts — Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- Micro Sound Engine (loaded first so ppSound is available to all scripts) -->
+  <script src="pp-sounds.js"></script>
+
+  <!-- Native App Feel Engine (transitions, gestures, micro-animations) -->
+  <script src="pp-transitions.js"></script>
+
+  <!-- OpenAI Prompt Cleaner (optional — falls back to local regex) -->
+  <script src="pp-openai.js"></script>
+
+  <title>PrintPath — From idea to production.</title>
+</head>
+<body>
+
+<!-- ============================================================
+     RETURN HOOK BANNER — shown to users who have a saved design
+     ============================================================ -->
+<div id="return-banner" class="return-banner" style="display:none" role="complementary" aria-label="Saved design">
+  <span class="return-banner-dot"></span>
+  <span id="return-banner-text">Your design is waiting — pick up where you left off.</span>
+  <button class="return-banner-btn" onclick="meOpenSavedDesign()">Resume Design</button>
+  <button class="return-banner-close" onclick="document.getElementById('return-banner').style.display='none'" aria-label="Dismiss">✕</button>
+</div>
+
+<!-- ============================================================
+     HYPE TICKER BANNER
+     Rotating promotional messages — edit HYPE_MESSAGES in app.js
+     ============================================================ -->
+<div class="hype-banner" id="hype-banner" role="marquee" aria-label="Promotions">
+  <div class="hype-track" id="hype-track"></div>
+</div>
+
+<!-- ============================================================
+     NAVBAR
+     ============================================================ -->
+<header class="navbar" role="banner">
+  <div class="container navbar-inner">
+
+    <!-- Logo -->
+    <a href="/" class="navbar-logo" aria-label="PrintPath home">
+      <span class="logo-icon logo-path-icon">⬡</span>
+      <span>Print<span class="logo-accent">Path</span></span>
+    </a>
+
+    <!-- Actions -->
+    <nav class="navbar-actions" aria-label="Site navigation">
+
+      <!-- Admin button (hidden from customers — visible only to store owner) -->
+      <a href="admin.html" id="admin-nav-btn" class="btn-icon" aria-label="Admin dashboard" title="Admin: Order Log"
+         style="opacity:0.45; font-size:0.7rem; text-decoration:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+        </svg>
+      </a>
+
+      <!-- AI Design Generator button -->
+      <button id="ai-gen-nav-btn" class="btn-icon" aria-label="Open AI Design Generator" title="AI Design Generator" onclick="openAiGen()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2a10 10 0 1 0 10 10"/>
+          <path d="M12 8v4l3 3"/>
+          <path d="M18 2l4 4-4 4"/>
+          <path d="M22 2l-4 4"/>
+        </svg>
+      </button>
+
+      <!-- Sticker Lab button -->
+      <button id="sticker-lab-nav-btn" class="btn-icon" aria-label="Open Sticker Lab" title="Sticker Lab" onclick="openStickerLab()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+          <line x1="9" y1="9" x2="9.01" y2="9"/>
+          <line x1="15" y1="9" x2="15.01" y2="9"/>
+        </svg>
+      </button>
+
+      <!-- Design Lab button -->
+      <button id="design-lab-nav-btn" class="btn-icon" aria-label="Open Design Lab" title="Design Lab">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+        </svg>
+      </button>
+
+      <!-- Theme toggle -->
+      <button id="theme-toggle" class="btn-icon" aria-label="Toggle dark / light mode" title="Toggle theme">
+        <!-- Moon icon (show in light mode) -->
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/>
+        </svg>
+        <!-- Sun icon (show in dark mode, hidden by default) -->
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+          <circle cx="12" cy="12" r="5"/>
+          <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+          <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+      </button>
+
+      <!-- Sound toggle -->
+      <button id="pp-sound-toggle" class="btn-icon" aria-label="Mute sounds" title="Sound: On">
+        <!-- Sound on icon -->
+        <svg class="sound-icon-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+        </svg>
+        <!-- Sound off icon -->
+        <svg class="sound-icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18" style="display:none">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <line x1="23" y1="9" x2="17" y2="15"/>
+          <line x1="17" y1="9" x2="23" y2="15"/>
+        </svg>
+      </button>
+
+      <!-- Cart button -->
+      <button id="cart-btn" class="btn-icon cart-btn" aria-label="Open cart" title="Shopping cart">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+        </svg>
+        <span id="cart-count" class="cart-count" aria-live="polite" aria-label="cart items">0</span>
+      </button>
+
+    </nav>
+  </div>
+</header>
+
+
+<!-- ============================================================
+     SHOP PAGE (default view)
+     ============================================================ -->
+<main id="page-shop" class="page-shop" aria-label="Shop">
+
+  <!-- ===================== HERO ===================== -->
+  <section class="hero" aria-labelledby="hero-heading">
+    <div class="hero-glow-orb hero-glow-1" aria-hidden="true"></div>
+    <div class="hero-glow-orb hero-glow-2" aria-hidden="true"></div>
+    <div class="container">
+      <div class="hero-eyebrow">
+        <span class="hero-eyebrow-dot"></span>
+        AI-Powered Custom Print Platform
+      </div>
+      <h1 id="hero-heading">
+        From idea to<span class="gradient-text"> production.</span>
+      </h1>
+      <p class="hero-sub">AI-powered. Print-perfect. From prompt to production.</p>
+      <div class="hero-cta-row">
+        <button class="btn btn-neon btn-lg hero-cta-primary" onclick="openAiGen()" aria-label="Start designing with AI">
+          Start Designing
+        </button>
+        <button class="btn btn-ghost-neon btn-lg" onclick="document.querySelector('.category-section').scrollIntoView({behavior:'smooth'})" aria-label="Explore categories">
+          Explore Categories
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TRUST STRIP ===================== -->
+  <section class="trust-bar" aria-label="Trust indicators">
+    <div class="container">
+      <div class="trust-bar-inner">
+        <div class="trust-item">
+          <span class="trust-check">✔</span>
+          <span class="trust-label">300 DPI Locked</span>
+        </div>
+        <div class="trust-divider"></div>
+        <div class="trust-item">
+          <span class="trust-check">✔</span>
+          <span class="trust-label">Print-Shop Ready</span>
+        </div>
+        <div class="trust-divider"></div>
+        <div class="trust-item">
+          <span class="trust-check">✔</span>
+          <span class="trust-label">Built for Precision</span>
+        </div>
+        <div class="trust-divider"></div>
+        <div class="trust-item">
+          <span class="trust-check">✔</span>
+          <span class="trust-label">No Design Experience Needed</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== HOW IT WORKS ===================== -->
+  <section class="how-section" id="how-it-works" aria-label="How it works">
+    <div class="container">
+      <p class="section-eyebrow">Simple by design</p>
+      <h2 class="section-heading">Three steps. That's it.</h2>
+      <div class="how-steps">
+        <div class="how-step" data-step="1">
+          <div class="how-step-num">1</div>
+          <h3>Describe</h3>
+          <p>Tell us what you want. A few words is all it takes.</p>
+        </div>
+        <div class="how-step-arrow" aria-hidden="true">→</div>
+        <div class="how-step" data-step="2">
+          <div class="how-step-num">2</div>
+          <h3>Refine</h3>
+          <p>Pick from multiple AI-built versions. Adjust until it's exactly right.</p>
+        </div>
+        <div class="how-step-arrow" aria-hidden="true">→</div>
+        <div class="how-step" data-step="3">
+          <div class="how-step-num">3</div>
+          <h3>Print</h3>
+          <p>300 DPI. Print-shop ready. No fixing required.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== DIFFERENCE SECTION ===================== -->
+  <section class="diff-section" aria-label="PrintPath difference">
+    <div class="container">
+      <h2 class="diff-heading">Not another custom merch site.<br><span class="gradient-text">Not even close.</span></h2>
+      <div class="diff-grid">
+        <div class="diff-card diff-card--others">
+          <div class="diff-card-label">Everywhere else</div>
+          <ul class="diff-list diff-list--bad">
+            <li>Low-res files that fail at print</li>
+            <li>Cluttered output with no structure</li>
+            <li>Hours spent fixing before handoff</li>
+            <li>Print shops reject the file</li>
+          </ul>
+        </div>
+        <div class="diff-vs" aria-hidden="true">VS</div>
+        <div class="diff-card diff-card--printpath">
+          <div class="diff-card-label">PrintPath</div>
+          <ul class="diff-list diff-list--good">
+            <li>Better files — 300 DPI, locked</li>
+            <li>Cleaner output — structured, premium</li>
+            <li>Faster handoff — nothing to fix</li>
+            <li>Less fixing — zero guesswork</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== THREE-TIER PRICING ===================== -->
+  <section class="pricing-section" id="pricing" aria-label="Pricing options">
+    <div class="container">
+      <p class="section-eyebrow">Simple pricing</p>
+      <h2 class="section-heading">Outfit your team.<br><span class="gradient-text">Make your event real.</span></h2>
+
+      <!-- Price anchor -->
+      <div class="pricing-anchor">
+        <span class="pricing-anchor-cross">Typical custom design: $150–$300 + hours of setup time.</span>
+        <span class="pricing-anchor-ours">PrintPath: done in seconds. No setup fees. Ever.</span>
+      </div>
+
+      <!-- Three tiers -->
+      <div class="pricing-grid">
+
+        <!-- Starter -->
+        <div class="pricing-card pricing-card--starter">
+          <div class="pricing-card-label">Starter</div>
+          <div class="pricing-card-price"><span class="pricing-amount">$24</span><span class="pricing-per">/design</span></div>
+          <div class="pricing-card-desc">Perfect for 1–2 items. One design, print-ready instantly.</div>
+          <ul class="pricing-feature-list">
+            <li>1 design, 1 item</li>
+            <li>300 DPI file</li>
+            <li>Print-shop ready</li>
+          </ul>
+          <button class="btn btn-outline pricing-cta" onclick="ppSelectTier('starter', 1)" aria-label="Get started with Starter tier">Get Started</button>
+        </div>
+
+        <!-- Popular (pre-selected) -->
+        <div class="pricing-card pricing-card--popular" id="pricing-popular">
+          <div class="pricing-popular-badge">⭐ Most Chosen</div>
+          <div class="pricing-card-label">Popular</div>
+          <div class="pricing-card-price">
+            <span class="pricing-amount">$99</span>
+            <span class="pricing-per"> for 5</span>
+            <span class="pricing-save">Save 15%</span>
+          </div>
+          <div class="pricing-card-desc">Best value. Great for teams, classes, and small groups.</div>
+          <ul class="pricing-feature-list">
+            <li>5 shirts, same design</li>
+            <li>300 DPI files</li>
+            <li>Group-order ready</li>
+            <li>Priority generation</li>
+          </ul>
+          <button class="btn btn-neon pricing-cta pricing-cta--popular" onclick="ppSelectTier('popular', 5)" aria-label="Choose Popular pack">Choose Popular</button>
+        </div>
+
+        <!-- Event Pack -->
+        <div class="pricing-card pricing-card--event">
+          <div class="pricing-card-label">Event Pack</div>
+          <div class="pricing-card-price">
+            <span class="pricing-amount">$399</span>
+            <span class="pricing-per"> for 25</span>
+            <span class="pricing-save">Save 20%</span>
+          </div>
+          <div class="pricing-card-desc">For reunions, fundraisers, and large group events.</div>
+          <ul class="pricing-feature-list">
+            <li>25 shirts</li>
+            <li>Name &amp; number variations</li>
+            <li>Dedicated print prep</li>
+            <li>Priority rendering</li>
+          </ul>
+          <button class="btn btn-outline pricing-cta" onclick="ppSelectTier('event', 25)" aria-label="Get Event Pack">Get Event Pack</button>
+        </div>
+
+      </div><!-- /pricing-grid -->
+
+      <!-- Close trigger nudge -->
+      <p class="pricing-close-nudge" id="pricing-nudge" style="display:none"></p>
+
+    </div>
+  </section>
+
+  <!-- ===================== PRO TIER ===================== -->
+  <section class="pro-section" id="pro-tier" aria-label="PrintPath Pro subscription">
+    <div class="container">
+      <div class="pro-inner">
+        <div class="pro-text">
+          <p class="section-eyebrow">PrintPath Pro</p>
+          <h2 class="pro-heading">Serious about printing?<br><span class="gradient-text">Go Pro.</span></h2>
+          <p class="pro-sub">Better AI. Saved projects. Priority rendering. Everything you need to move faster.</p>
+          <ul class="pro-feature-list">
+            <li><span class="pro-check">✦</span> Enhanced AI generation quality</li>
+            <li><span class="pro-check">✦</span> Saved projects &amp; design history</li>
+            <li><span class="pro-check">✦</span> Priority rendering queue</li>
+            <li><span class="pro-check">✦</span> Premium template library</li>
+            <li><span class="pro-check">✦</span> Bulk order discounts unlocked</li>
+          </ul>
+          <div class="pro-price-row">
+            <span class="pro-price">$14<span class="pro-mo">/mo</span></span>
+            <span class="pro-tagline">Cancel anytime. No setup.</span>
+          </div>
+          <button class="btn btn-neon pro-cta-btn" onclick="ppOpenPro()" aria-label="Start PrintPath Pro">
+            Start Pro — $14/mo
+          </button>
+        </div>
+        <div class="pro-visual" aria-hidden="true">
+          <div class="pro-card-mock">
+            <div class="pro-card-eyebrow">⬡ PrintPath Pro</div>
+            <div class="pro-card-line">Enhanced AI</div>
+            <div class="pro-card-line">Saved Projects</div>
+            <div class="pro-card-line">Priority Queue</div>
+            <div class="pro-card-badge">Active</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== CATEGORY SECTION ===================== -->
+  <section class="category-section" aria-label="Design categories">
+    <div class="container">
+      <p class="section-eyebrow">Pick your use case</p>
+      <h2 class="section-heading">What are you making today?</h2>
+      <div class="category-grid">
+        <button class="category-btn" onclick="filterByCategory('work')" aria-label="Work designs">Work</button>
+        <button class="category-btn" onclick="filterByCategory('school')" aria-label="School designs">School</button>
+        <button class="category-btn" onclick="filterByCategory('events')" aria-label="Event designs">Events</button>
+        <button class="category-btn" onclick="filterByCategory('sports')" aria-label="Sports designs">Sports</button>
+        <button class="category-btn" onclick="filterByCategory('causes')" aria-label="Causes designs">Causes</button>
+        <button class="category-btn" onclick="filterByCategory('business')" aria-label="Business designs">Business</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== DESIGN LAB ENTRY ===================== -->
+  <section class="lab-entry-section" aria-label="AI Design Lab entry">
+    <div class="container">
+      <div class="lab-entry-inner">
+        <div class="lab-entry-text">
+          <p class="section-eyebrow">AI Design Lab</p>
+          <h2 class="lab-entry-heading">Describe it once.<br><span class="gradient-text">Get it done right.</span></h2>
+          <p class="lab-entry-sub">Describe your idea. The AI builds a print-ready design — structured, clean, and wearable. Design it. We make it print-perfect.</p>
+        </div>
+        <div class="lab-entry-form">
+          <div class="lab-entry-input-row">
+            <input
+              id="lab-entry-input"
+              type="text"
+              class="lab-entry-input"
+              placeholder="Describe your idea (or prompt)…"
+              maxlength="300"
+              aria-label="Describe your design"
+              autocomplete="off"
+              spellcheck="true"
+              onkeydown="if(event.key==='Enter'){ openAiGenWithPrompt(this.value); }"
+            />
+            <button class="btn btn-neon" onclick="openAiGenWithPrompt(document.getElementById('lab-entry-input').value)" aria-label="Create design">
+              Start Creating
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SOCIAL PROOF ===================== -->
+  <section class="proof-section" aria-label="Customer testimonials">
+    <div class="container">
+      <p class="section-eyebrow">What people are saying</p>
+      <div class="proof-grid">
+        <div class="proof-card">
+          <p class="proof-quote">"Saved me hours. Just worked."</p>
+          <p class="proof-author">— Alex R., small business owner</p>
+        </div>
+        <div class="proof-card">
+          <p class="proof-quote">"Finally something that sends files ready to print."</p>
+          <p class="proof-author">— Mia T., event organizer</p>
+        </div>
+        <div class="proof-card">
+          <p class="proof-quote">"Didn't have to fix anything. Ordered straight from here."</p>
+          <p class="proof-author">— Jordan K., team captain</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FINAL CTA ===================== -->
+  <section class="final-cta-section" aria-label="Final call to action">
+    <div class="container">
+      <div class="final-cta-inner">
+        <p class="section-eyebrow" style="margin-bottom:1rem;">Ready when you are</p>
+        <h2 class="final-cta-heading">Premium print.<br><span class="gradient-text">Done right.</span></h2>
+        <button class="btn btn-neon btn-lg final-cta-btn" onclick="openAiGen()" aria-label="Start designing">
+          Start Designing
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Featured Drop Countdown -->
+  <!-- To enable: set featuredDrop:true on a product in products.json and update FEATURED_DROP in app.js -->
+  <section class="countdown-section" id="countdown-section" style="display:none" aria-label="Featured drop countdown">
+    <div class="container">
+      <div class="countdown-inner">
+        <div class="countdown-text">
+          <span class="countdown-eyebrow">⚡ Limited Drop</span>
+          <h2 id="countdown-product-name">Street Art Drop</h2>
+          <p id="countdown-product-desc">Drops in:</p>
+        </div>
+        <div class="countdown-timer" aria-live="polite">
+          <div class="countdown-unit"><span id="cd-days">00</span><label>Days</label></div>
+          <div class="countdown-sep">:</div>
+          <div class="countdown-unit"><span id="cd-hours">00</span><label>Hours</label></div>
+          <div class="countdown-sep">:</div>
+          <div class="countdown-unit"><span id="cd-mins">00</span><label>Mins</label></div>
+          <div class="countdown-sep">:</div>
+          <div class="countdown-unit"><span id="cd-secs">00</span><label>Secs</label></div>
+        </div>
+        <button class="btn btn-primary" onclick="scrollToFeatured()" aria-label="Shop the featured drop">Shop the Drop</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Filters Bar -->
+  <div class="filters-bar" role="search" aria-label="Filter products">
+    <div class="container">
+      <div class="filters-inner">
+
+        <!-- Search -->
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <input
+            id="search-input"
+            type="search"
+            class="search-input"
+            placeholder="Search tees…"
+            aria-label="Search products"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+
+        <!-- Size filter pills -->
+        <div id="size-pills" class="filter-pills" role="group" aria-label="Filter by size"></div>
+
+        <!-- Color filter pills -->
+        <div id="color-pills" class="filter-pills" role="group" aria-label="Filter by color"></div>
+
+        <!-- Badge filter pills -->
+        <div id="badge-pills" class="filter-pills" role="group" aria-label="Filter by badge"></div>
+
+        <!-- Featured drop toggle -->
+        <button id="featured-toggle" class="pill" data-featured="false" aria-label="Show featured drops only">
+          ⚡ Drops
+        </button>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Product Grid -->
+  <div class="container">
+    <p id="results-info" class="results-info" aria-live="polite" aria-atomic="true"></p>
+    <div id="product-grid" class="product-grid" role="list" aria-label="Products"></div>
+  </div>
+
+</main>
+
+
+<!-- ============================================================
+     PRODUCT DETAIL PAGE (hidden by default)
+     ============================================================ -->
+<main id="page-product" class="product-page" aria-label="Product detail" style="display:none">
+  <div class="container">
+
+    <!-- Back button -->
+    <button id="pd-back" class="product-page-back" aria-label="Back to shop">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m15 18-6-6 6-6"/>
+      </svg>
+      Back to Shop
+    </button>
+
+    <!-- Product layout: image + info -->
+    <div class="product-detail-grid">
+
+      <!-- Image gallery -->
+      <div class="product-gallery" role="region" aria-label="Product images">
+        <div id="pd-gallery-main" class="gallery-main">
+          <img src="" alt="" loading="eager" decoding="async" width="600" height="600" />
+        </div>
+        <div id="pd-gallery-thumbs" class="gallery-thumbs" role="list" aria-label="Thumbnail images"></div>
+      </div>
+
+      <!-- Product info -->
+      <div class="product-info">
+
+        <!-- Badge -->
+        <div id="pd-badge" class="product-info-badge"></div>
+
+        <!-- Name & price -->
+        <h1 id="pd-name" class="product-name"></h1>
+        <p id="pd-price" class="product-info-price"></p>
+
+        <!-- Description -->
+        <p id="pd-desc" class="product-info-desc"></p>
+
+        <div class="divider"></div>
+
+        <!-- Size selector -->
+        <div role="group" aria-labelledby="size-label">
+          <p id="size-label" class="selector-label">Select Size</p>
+          <div id="pd-size-options" class="size-options" role="radiogroup" aria-label="Sizes"></div>
+        </div>
+
+        <!-- Color selector -->
+        <div role="group" aria-labelledby="color-label">
+          <p id="color-label" class="selector-label">Select Color</p>
+          <div id="pd-color-options" class="color-options" role="radiogroup" aria-label="Colors"></div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Quantity -->
+        <div>
+          <p class="selector-label">How many are you making?</p>
+          <div class="quantity-wrap" role="group" aria-label="Select quantity">
+            <button id="pd-qty-dec" class="qty-btn" aria-label="Decrease quantity">−</button>
+            <span id="pd-qty-val" class="qty-value" aria-live="polite" aria-atomic="true">1</span>
+            <button id="pd-qty-inc" class="qty-btn" aria-label="Increase quantity">+</button>
+          </div>
+        </div>
+
+        <!-- Add to cart -->
+        <div class="add-to-cart-row">
+          <button id="pd-add-to-cart" class="btn btn-neon btn-lg" aria-label="Add to cart">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            Continue
+          </button>
+          <button class="btn btn-secondary" aria-label="Save to wishlist" title="Save">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Trust badges -->
+        <div style="display:flex; gap:1rem; flex-wrap:wrap; margin-top:0.5rem;">
+          <span style="font-size:0.75rem; color:var(--text-muted); display:flex; align-items:center; gap:0.3rem;">🚚 Free shipping over $50</span>
+          <span style="font-size:0.75rem; color:var(--text-muted); display:flex; align-items:center; gap:0.3rem;">↩️ 30-day returns</span>
+          <span style="font-size:0.75rem; color:var(--text-muted); display:flex; align-items:center; gap:0.3rem;">🔒 Secure checkout</span>
+        </div>
+        <!-- Print quality reassurance -->
+        <div class="print-quality-notice">
+          <span class="pq-icon">🎯</span>
+          <span>This design will be optimized to <strong>300 DPI</strong> before printing</span>
+        </div>
+
+      </div><!-- /product-info -->
+    </div><!-- /product-detail-grid -->
+  </div>
+</main>
+
+
+<!-- ============================================================
+     DESIGN LAB MODAL
+     Full-screen shirt preview with color swap, zoom, front/back flip
+     ============================================================ -->
+<div id="design-lab-overlay" class="dl-overlay" role="dialog" aria-modal="true" aria-label="Design Lab" tabindex="-1" style="display:none">
+  <div class="dl-modal">
+
+    <!-- Header -->
+    <div class="dl-header">
+      <div class="dl-header-left">
+        <span class="dl-eyebrow">✦ Design Lab</span>
+        <h2 id="dl-name"></h2>
+      </div>
+      <button class="dl-close" id="dl-close" aria-label="Close Design Lab">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Body: image + controls -->
+    <div class="dl-body">
+
+      <!-- Image viewer -->
+      <div class="dl-viewer">
+        <!-- Zoom container -->
+        <div class="dl-zoom-wrap" id="dl-zoom-wrap">
+          <img id="dl-main-img" src="" alt="" class="dl-main-img" />
+          <div class="dl-zoom-hint" id="dl-zoom-hint">🔍 Click to zoom</div>
+        </div>
+
+        <!-- Front / Back toggle -->
+        <div class="dl-flip-row" id="dl-flip-row">
+          <button class="dl-flip-btn active" id="dl-btn-front" onclick="dlSetView('front')" aria-label="Show front view">Front</button>
+          <button class="dl-flip-btn" id="dl-btn-back" onclick="dlSetView('back')" aria-label="Show back view">Back</button>
+        </div>
+      </div>
+
+      <!-- Controls sidebar -->
+      <div class="dl-controls">
+
+        <div class="dl-price" id="dl-price"></div>
+        <p class="dl-desc" id="dl-desc"></p>
+
+        <!-- Color swatches -->
+        <div class="dl-section">
+          <p class="selector-label">Color — <span id="dl-selected-color-name">select one</span></p>
+          <div class="color-options" id="dl-color-options"></div>
+        </div>
+
+        <!-- Size selector -->
+        <div class="dl-section">
+          <p class="selector-label">Size</p>
+          <div class="size-options" id="dl-size-options"></div>
+        </div>
+
+        <!-- Zoom instruction -->
+        <p class="dl-tip">👆 Tap the image to zoom into the design area</p>
+
+        <!-- Stock indicator -->
+        <div id="dl-stock" class="dl-stock"></div>
+
+        <!-- Actions -->
+        <div class="dl-actions">
+          <button class="btn btn-neon btn-full btn-lg" id="dl-add-to-cart" aria-label="Add to cart">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            Continue
+          </button>
+          <button class="btn btn-secondary btn-full" id="dl-back-to-store" aria-label="Back to store">
+            ← Back to Store
+          </button>
+        </div>
+
+      </div><!-- /dl-controls -->
+    </div><!-- /dl-body -->
+  </div><!-- /dl-modal -->
+</div>
+
+<!-- ============================================================
+     CART SLIDE-OUT PANEL
+     ============================================================ -->
+<div id="cart-overlay" class="cart-overlay" role="dialog" aria-modal="true" aria-label="Shopping cart" tabindex="-1">
+  <div id="cart-panel" class="cart-panel" role="document">
+
+    <div class="cart-header">
+      <h2>Your Cart</h2>
+      <button id="cart-close" class="cart-close" aria-label="Close cart">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <div id="cart-items" class="cart-items" role="list" aria-label="Cart items"></div>
+
+    <div class="cart-footer">
+      <div class="cart-subtotal">
+        <span>Subtotal</span>
+        <span id="cart-subtotal">$0.00</span>
+      </div>
+      <div class="cart-total">
+        <span>Total</span>
+        <span id="cart-total" class="cart-total-amount">$0.00</span>
+      </div>
+      <button id="cart-checkout" class="btn-checkout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+        Send to Print
+      </button>
+      <p class="cart-note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        Secure checkout via Stripe
+      </p>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ============================================================
+     CHECKOUT MODAL
+     ============================================================ -->
+<div id="checkout-overlay" class="checkout-overlay" role="dialog" aria-modal="true" aria-label="Checkout" tabindex="-1">
+  <div class="checkout-modal">
+
+    <div class="checkout-modal-header">
+      <h2>Order Summary</h2>
+      <div style="display:flex; align-items:center; gap:0.5rem;">
+        <div class="stripe-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          Stripe Secure
+        </div>
+        <button id="checkout-close" class="cart-close" aria-label="Close checkout">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="checkout-summary">
+      <div id="checkout-items"></div>
+      <div class="checkout-summary-row" style="border-top:1px solid var(--border-color); padding-top:0.5rem; margin-top:0.5rem;">
+        <span>Subtotal</span>
+        <span id="checkout-subtotal">$0.00</span>
+      </div>
+      <div class="checkout-summary-row">
+        <span>Shipping</span>
+        <span id="checkout-shipping">$5.99</span>
+      </div>
+      <div class="checkout-summary-row total">
+        <span>Total</span>
+        <span id="checkout-total">$0.00</span>
+      </div>
+    </div>
+
+    <!-- Test mode warning -->
+    <div class="stripe-test-notice">
+      <span>⚠️</span>
+      <span>
+        <strong>Test Mode:</strong> Replace <code>pk_test_YOUR_STRIPE_PUBLISHABLE_KEY_HERE</code> in
+        <code>app.js</code> with your real Stripe publishable key to enable live payments.
+      </span>
+    </div>
+
+    <!-- Stripe pay button -->
+    <button id="checkout-stripe" class="btn-stripe">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+      </svg>
+      Pay with Stripe
+    </button>
+
+  </div>
+</div>
+
+
+<!-- ============================================================
+     STICKER LAB MODAL
+     Canvas-based sticker designer with DPI validation + export
+     ============================================================ -->
+<div id="sticker-lab-overlay" class="sl-overlay" role="dialog" aria-modal="true" aria-label="Sticker Lab" tabindex="-1" style="display:none">
+  <div class="sl-modal">
+
+    <!-- Header -->
+    <div class="sl-header">
+      <div class="sl-header-left">
+        <span class="sl-eyebrow">🎨 Sticker Lab</span>
+        <h2>Design Your Sticker</h2>
+      </div>
+      <button id="sl-close" class="dl-close" aria-label="Close Sticker Lab">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" width="22" height="22">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="sl-body">
+
+      <!-- LEFT: Canvas + upload zone -->
+      <div class="sl-left">
+
+        <!-- Upload zone (shown when no image) -->
+        <div id="sl-upload-zone" class="sl-upload-zone">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round" width="40" height="40">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <p><strong>Drag &amp; drop your image here</strong></p>
+          <p class="sl-hint">or use the Upload button below</p>
+          <p class="sl-hint">PNG · JPEG · WebP · min 300 DPI recommended</p>
+          <input id="sl-file-input" type="file" accept="image/png,image/jpeg,image/webp" style="display:none" aria-label="Upload sticker image" />
+        </div>
+
+        <!-- Canvas wrap -->
+        <div id="sl-canvas-wrap" class="sl-canvas-wrap">
+          <canvas id="sl-canvas" class="sl-canvas" aria-label="Sticker design canvas"></canvas>
+          <p class="sl-canvas-hint">Drag to reposition · Use sliders to scale &amp; rotate</p>
+        </div>
+
+        <!-- Upload button -->
+        <button id="sl-upload-btn" class="btn btn-secondary btn-full" aria-label="Upload image">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          Upload Image
+        </button>
+
+      </div><!-- /sl-left -->
+
+      <!-- RIGHT: Controls -->
+      <div class="sl-controls">
+
+        <!-- Size selector -->
+        <div class="sl-section">
+          <p class="selector-label">Print Size</p>
+          <select id="sl-size-select" class="sl-select" aria-label="Select sticker print size"></select>
+          <div id="sl-custom-fields" class="sl-custom-fields" style="display:none">
+            <div class="sl-custom-row">
+              <label>Width (in)</label>
+              <input id="sl-custom-w" type="number" min="1" max="12" step="0.5" value="3" class="sl-num-input" aria-label="Custom width in inches" />
+            </div>
+            <div class="sl-custom-row">
+              <label>Height (in)</label>
+              <input id="sl-custom-h" type="number" min="1" max="12" step="0.5" value="3" class="sl-num-input" aria-label="Custom height in inches" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Scale -->
+        <div class="sl-section">
+          <p class="selector-label">Scale — <span id="sl-scale-value">100%</span></p>
+          <input id="sl-scale" type="range" min="10" max="300" value="100" class="sl-slider" aria-label="Scale image" />
+        </div>
+
+        <!-- Rotation -->
+        <div class="sl-section">
+          <p class="selector-label">Rotate — <span id="sl-rot-value">0°</span></p>
+          <input id="sl-rot" type="range" min="-180" max="180" value="0" class="sl-slider" aria-label="Rotate image" />
+        </div>
+
+        <!-- DPI status -->
+        <div class="sl-section">
+          <p class="selector-label">Print Quality</p>
+          <div class="sl-dpi-row">
+            <span id="sl-dpi-status" class="sl-dpi-badge" aria-live="polite">— Upload image</span>
+            <span id="sl-dpi-value" class="sl-dpi-num" aria-live="polite"></span>
+          </div>
+          <p id="sl-dimensions" class="sl-hint" aria-live="polite"></p>
+        </div>
+
+        <!-- Error box -->
+        <div id="sl-error-box" class="sl-error-box" role="alert" aria-live="assertive" style="display:none"></div>
+
+        <!-- Preview thumbnail -->
+        <div class="sl-preview-row" style="display:none" id="sl-preview-row">
+          <p class="selector-label">Preview</p>
+          <img id="sl-preview-thumb" src="" alt="Sticker preview" class="sl-preview-thumb" />
+        </div>
+
+        <!-- Quantity -->
+        <div class="sl-section">
+          <p class="selector-label">How many are you making?</p>
+          <div class="quantity-wrap" role="group" aria-label="Select quantity">
+            <button id="sl-qty-dec" class="qty-btn" aria-label="Decrease quantity">−</button>
+            <span id="sl-qty-val" class="qty-value" aria-live="polite">1</span>
+            <button id="sl-qty-inc" class="qty-btn" aria-label="Increase quantity">+</button>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="sl-actions">
+          <button id="sl-export-btn" class="btn btn-secondary btn-full" disabled aria-label="Download print-ready PNG">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download PNG (300 DPI)
+          </button>
+          <button id="sl-send-print-btn" class="btn btn-accent btn-full btn-lg" disabled aria-label="Continue to Print Shop">
+            🛍 Continue to Print Shop
+          </button>
+          <button id="sl-add-cart-btn" class="btn btn-neon btn-full btn-lg" disabled aria-label="Lock sticker design to cart">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            Lock Design
+          </button>
+          <button id="sl-back-btn" class="btn btn-ghost btn-full" aria-label="Back to store">← Back to Store</button>
+        </div>
+
+      </div><!-- /sl-controls -->
+    </div><!-- /sl-body -->
+  </div><!-- /sl-modal -->
+</div>
+
+
+<!-- ============================================================
+     PRINT HANDOFF — REVIEW PANEL
+     Final review before customer is sent to print partner.
+     Opened from Sticker Lab after export is ready.
+     ============================================================ -->
+<div id="review-panel-overlay" class="rp-overlay" role="dialog" aria-modal="true"
+  aria-label="Review your order" tabindex="-1" style="display:none">
+  <div class="rp-modal">
+
+    <div class="rp-header">
+      <div>
+        <span class="rp-eyebrow">Almost there!</span>
+        <h2>Review Your Order</h2>
+      </div>
+      <button id="rp-close" class="dl-close" aria-label="Close review">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" width="22" height="22">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="rp-body">
+
+      <!-- Preview image -->
+      <div class="rp-preview-wrap">
+        <img id="rp-preview-img" src="" alt="Sticker preview" class="rp-preview-img" />
+        <span id="rp-print-badge" class="rp-print-badge"></span>
+      </div>
+
+      <!-- Order details table -->
+      <div class="rp-details">
+        <dl class="rp-table">
+          <div class="rp-row">
+            <dt>Type</dt>
+            <dd id="rp-type">—</dd>
+          </div>
+          <div class="rp-row">
+            <dt>Size</dt>
+            <dd id="rp-size">—</dd>
+          </div>
+          <div class="rp-row">
+            <dt>DPI</dt>
+            <dd id="rp-dpi">—</dd>
+          </div>
+          <div class="rp-row">
+            <dt>Quantity</dt>
+            <dd id="rp-qty">—</dd>
+          </div>
+          <div class="rp-row">
+            <dt>Finish</dt>
+            <dd id="rp-finish">—</dd>
+          </div>
+          <div class="rp-row">
+            <dt>Cut Type</dt>
+            <dd id="rp-cut">—</dd>
+          </div>
+          <div class="rp-row" id="rp-notes-row" style="display:none">
+            <dt>Notes</dt>
+            <dd id="rp-notes">—</dd>
+          </div>
+        </dl>
+
+        <!-- Finish / cut pickers (placeholder UI for future expansion) -->
+        <div class="rp-pickers">
+          <div class="rp-picker-group">
+            <p class="selector-label">Finish</p>
+            <div class="rp-picker-row" id="rp-finish-picker">
+              <button class="pill active" data-finish="matte" onclick="rpSelectFinish(this,'matte')">Matte</button>
+              <button class="pill" data-finish="gloss" onclick="rpSelectFinish(this,'gloss')">Gloss</button>
+            </div>
+          </div>
+          <div class="rp-picker-group">
+            <p class="selector-label">Cut Type</p>
+            <div class="rp-picker-row" id="rp-cut-picker">
+              <button class="pill active" data-cut="die_cut" onclick="rpSelectCut(this,'die_cut')">Die Cut</button>
+              <button class="pill" data-cut="circle" onclick="rpSelectCut(this,'circle')">Circle</button>
+              <button class="pill" data-cut="square" onclick="rpSelectCut(this,'square')">Square</button>
+              <button class="pill" data-cut="kiss_cut" onclick="rpSelectCut(this,'kiss_cut')">Kiss Cut</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notes field -->
+        <div class="rp-notes-field">
+          <p class="selector-label">Notes for the print shop (optional)</p>
+          <textarea id="rp-notes-input" class="rp-textarea" rows="2"
+            placeholder="e.g. Please keep the white border clean…"
+            aria-label="Order notes"></textarea>
+        </div>
+
+        <!-- Error messages -->
+        <div id="rp-error-box" class="sl-error-box" role="alert"
+          aria-live="assertive" style="display:none"></div>
+
+        <!-- CTA -->
+        <div class="rp-actions">
+          <button id="rp-confirm-btn" class="btn btn-primary btn-full btn-lg"
+            aria-label="Continue to print shop">
+            Continue to Print Shop
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </button>
+          <button id="rp-back-edit" class="btn btn-ghost btn-full"
+            aria-label="Back to Sticker Lab">← Back to Editor</button>
+        </div>
+
+      </div>
+    </div><!-- /rp-body -->
+  </div><!-- /rp-modal -->
+</div>
+
+
+<!-- ============================================================
+     AI DESIGN GENERATOR MODAL
+     Prompt → generated images → send to Sticker Lab or Design Lab
+     ============================================================ -->
+<div id="ai-gen-overlay" class="ai-gen-overlay" role="dialog" aria-modal="true"
+     aria-label="AI Design Generator" tabindex="-1" style="display:none">
+  <div class="ai-gen-modal">
+
+    <!-- Header -->
+    <div class="ai-gen-header">
+      <div class="ai-gen-header-left">
+        <span class="ai-gen-eyebrow">⬡ PrintPath AI</span>
+        <h2>From prompt to <span class="gradient-text">production.</span></h2>
+        <p class="ai-gen-sub">Describe your idea. Every output is locked at 300 DPI. Print-shop approved.</p>
+      </div>
+      <div class="ai-gen-header-actions">
+        <button id="ai-settings-toggle" class="btn-icon ai-settings-btn" aria-label="API Settings" title="API Settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+        <button id="ai-gen-close" class="dl-close" aria-label="Close AI Design Generator">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" width="22" height="22">
+            <path d="M18 6 6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Server Connection Panel (hidden by default) -->
+    <div id="ai-settings-panel" class="ai-settings-panel" style="display:none">
+      <div class="ai-settings-inner">
+        <label class="ai-settings-label">AI Server</label>
+        <p class="ai-settings-desc">Prompt cleaning runs on your local server. Start the server to enable AI-powered prompt processing.</p>
+        <div id="ai-key-status" class="ai-key-status"></div>
+        <button id="ai-server-check" class="btn btn-neon ai-key-save-btn" style="margin-top:8px">Check Connection</button>
+      </div>
+    </div>
+
+    <!-- Prompt row -->
+    <div class="ai-gen-prompt-row">
+      <input
+        id="ai-prompt-input"
+        type="text"
+        class="ai-prompt-input"
+        placeholder="Describe your idea (or prompt)…"
+        maxlength="300"
+        aria-label="Describe your design"
+        autocomplete="off"
+        spellcheck="true"
+      />
+      <button id="ai-generate-btn" class="btn btn-neon ai-generate-btn"
+              aria-label="Create design">
+        Create Design
+      </button>
+    </div>
+    <!-- Prompt training hint -->
+    <p class="ai-prompt-hint">Describe your idea or use a prompt — <em>"vintage eagle"</em>, <em>"funny cat logo"</em>, <em>"bold team graphic"</em></p>
+
+    <!-- AI cleaning indicator (shows when OpenAI processed the prompt) -->
+    <div id="ai-clean-indicator" class="ai-clean-indicator" style="display:none" aria-live="polite"></div>
+
+    <!-- Quick prompt chips -->
+    <div class="ai-quick-prompts" aria-label="Quick prompt ideas">
+      <button class="ai-chip" onclick="aiQuickPrompt('Autism Awareness shirt with colorful puzzle pieces')">Autism Awareness</button>
+      <button class="ai-chip" onclick="aiQuickPrompt('funny work shirt with bold humorous text')">Funny Work Shirt</button>
+      <button class="ai-chip" onclick="aiQuickPrompt('family reunion shirt matching design with year')">Family Reunion</button>
+      <button class="ai-chip" onclick="aiQuickPrompt('bold team logo sports graphic design')">Team Logo</button>
+      <button class="ai-chip" onclick="aiQuickPrompt('clean minimal text-only design no graphics')">Minimal Clean</button>
+      <button class="ai-chip" onclick="aiQuickPrompt('birthday shirt with festive cake and name')">Birthday Shirt</button>
+    </div>
+
+    <!-- Message box (errors / info) -->
+    <div id="ai-error-box" class="ai-message-box error" style="display:none"></div>
+
+    <!-- Smart loading sequence -->
+    <div id="ai-spinner" class="ai-spinner-wrap" style="display:none" aria-live="polite" aria-label="Generating designs…">
+      <div class="ai-spinner-ring"></div>
+      <p id="ai-loading-text" class="ai-spinner-label">Creating design...</p>
+    </div>
+
+    <!-- Hint (shown before first generation) -->
+    <div id="ai-results-hint" class="ai-results-hint">
+      <div class="ai-hint-icon">✦</div>
+      <p>Describe what you want — or pick a style above.</p>
+      <p class="ai-hint-sub">You'll see <strong>multiple versions</strong> to compare. Pick the best one.</p>
+      <p class="ai-live-ticker" id="ai-live-ticker">● Popular designs are being created right now</p>
+    </div>
+
+    <!-- Layout badge — shown after generation, shows auto-selected layout & palette -->
+    <div id="pp-layout-badge" class="pp-layout-badge" style="display:none" aria-live="polite"></div>
+
+    <!-- Results grid -->
+    <div id="ai-results-grid" class="ai-results-grid" role="list" aria-label="Generated designs"></div>
+
+    <!-- Regenerate + style loop row (appears after results) -->
+    <div id="ai-regen-bar" class="ai-regen-bar" style="display:none">
+      <button id="ai-regen-btn" class="btn btn-ghost-neon ai-regen-btn"
+              aria-label="Try another version">
+        ↻ Try Another Version
+      </button>
+      <div class="ai-style-loop" aria-label="Try another style">
+        <span class="ai-style-loop-label">Style:</span>
+        <button class="ai-chip ai-chip--sm" data-style="bold"      onclick="aiStyleVariant('bold')">Bold</button>
+        <button class="ai-chip ai-chip--sm" data-style="minimal"   onclick="aiStyleVariant('minimal')">Minimal</button>
+        <button class="ai-chip ai-chip--sm" data-style="cartoon"   onclick="aiStyleVariant('cartoon')">Cartoon</button>
+        <button class="ai-chip ai-chip--sm" data-style="realistic" onclick="aiStyleVariant('realistic')">Realistic</button>
+        <button class="ai-chip ai-chip--sm" data-style="funny"     onclick="aiStyleVariant('funny')">Funny</button>
+        <button class="ai-chip ai-chip--sm" data-style="retro"     onclick="aiStyleVariant('retro')">Retro</button>
+      </div>
+    </div>
+
+    <!-- ================================================
+         COLOR TOOLKIT — shown after selecting a design
+         ================================================ -->
+    <div id="pp-color-toolkit" class="pp-color-toolkit" style="display:none" aria-label="Print color toolkit">
+
+      <!-- Header row -->
+      <div class="pp-ct-header">
+        <span class="pp-ct-title">🎨 Print Color Toolkit</span>
+        <span class="pp-ct-badge" id="pp-ct-safe-badge">✓ Colors Optimized for Print</span>
+      </div>
+
+      <!-- Fabric mode toggles -->
+      <div class="pp-ct-section">
+        <p class="pp-ct-label">Fabric / Output Mode</p>
+        <div class="pp-ct-modes" role="group" aria-label="Fabric mode">
+          <button class="pp-ct-mode-btn pp-ct-mode-active" data-mode="light"
+                  onclick="ppCtSetMode('light')" aria-pressed="true">☀ Light Shirt</button>
+          <button class="pp-ct-mode-btn" data-mode="dark"
+                  onclick="ppCtSetMode('dark')" aria-pressed="false">🌙 Dark Shirt</button>
+          <button class="pp-ct-mode-btn" data-mode="sticker"
+                  onclick="ppCtSetMode('sticker')" aria-pressed="false">🏷 Sticker</button>
+        </div>
+      </div>
+
+      <!-- Color limit -->
+      <div class="pp-ct-section">
+        <p class="pp-ct-label">Max Colors &nbsp;<span class="pp-ct-color-count" id="pp-ct-count-label">2 colors</span></p>
+        <div class="pp-ct-limit-row" role="group" aria-label="Color limit">
+          <button class="pp-ct-limit-btn" data-limit="1" onclick="ppCtSetLimit(1)" aria-pressed="false">1</button>
+          <button class="pp-ct-limit-btn pp-ct-limit-active" data-limit="2" onclick="ppCtSetLimit(2)" aria-pressed="true">2</button>
+          <button class="pp-ct-limit-btn" data-limit="3" onclick="ppCtSetLimit(3)" aria-pressed="false">3</button>
+          <button class="pp-ct-limit-btn" data-limit="4" onclick="ppCtSetLimit(4)" aria-pressed="false">4</button>
+        </div>
+      </div>
+
+      <!-- Preset palette -->
+      <div class="pp-ct-section">
+        <p class="pp-ct-label">Preset Colors</p>
+        <div class="pp-ct-presets" aria-label="Color presets">
+          <button class="pp-ct-swatch" data-color="#111111" data-name="Black"
+                  onclick="ppCtPickPreset('#111111','Black')"
+                  style="background:#111111" aria-label="Black" title="Black"></button>
+          <button class="pp-ct-swatch" data-color="#FFFFFF" data-name="White"
+                  onclick="ppCtPickPreset('#FFFFFF','White')"
+                  style="background:#FFFFFF;border-color:#bbb" aria-label="White" title="White"></button>
+          <button class="pp-ct-swatch" data-color="#D0021B" data-name="Red"
+                  onclick="ppCtPickPreset('#D0021B','Red')"
+                  style="background:#D0021B" aria-label="Red" title="Red"></button>
+          <button class="pp-ct-swatch" data-color="#0A2463" data-name="Navy"
+                  onclick="ppCtPickPreset('#0A2463','Navy')"
+                  style="background:#0A2463" aria-label="Navy" title="Navy"></button>
+          <button class="pp-ct-swatch" data-color="#00e5a0" data-name="Neon Green"
+                  onclick="ppCtPickPreset('#00e5a0','Neon Green')"
+                  style="background:#00e5a0" aria-label="Neon Green" title="Neon Green"></button>
+          <button class="pp-ct-swatch" data-color="#FF6B00" data-name="Safety Orange"
+                  onclick="ppCtPickPreset('#FF6B00','Safety Orange')"
+                  style="background:#FF6B00" aria-label="Safety Orange" title="Safety Orange"></button>
+        </div>
+      </div>
+
+      <!-- Custom color picker -->
+      <div class="pp-ct-section">
+        <p class="pp-ct-label">Custom Color</p>
+        <div class="pp-ct-custom-row">
+          <input type="color" id="pp-ct-custom-input" class="pp-ct-color-input"
+                 value="#111111" aria-label="Custom color picker"
+                 oninput="ppCtCustomColor(this.value)" />
+          <span class="pp-ct-custom-label" id="pp-ct-custom-label">#111111</span>
+          <button class="pp-ct-add-btn" onclick="ppCtAddCustom()" aria-label="Add custom color">+ Add</button>
+        </div>
+      </div>
+
+      <!-- Active palette (selected colors) -->
+      <div class="pp-ct-section" id="pp-ct-active-section">
+        <p class="pp-ct-label">Active Palette <span class="pp-ct-palette-count" id="pp-ct-palette-count"></span></p>
+        <div class="pp-ct-active-palette" id="pp-ct-active-palette" aria-label="Active color palette"></div>
+      </div>
+
+      <!-- Contrast warning -->
+      <div class="pp-ct-contrast-warn" id="pp-ct-contrast-warn" style="display:none" role="alert">
+        <span>⚠</span>
+        <span id="pp-ct-contrast-msg">Low contrast detected — text may not be legible on this fabric.</span>
+        <button class="pp-ct-fix-btn" onclick="ppCtAutoFix()">Auto-Fix</button>
+      </div>
+
+      <!-- Sticker cut-line preview -->
+      <div class="pp-ct-cutline-wrap" id="pp-ct-cutline-wrap" style="display:none" aria-label="Cut line preview">
+        <p class="pp-ct-label">Cut Line Preview</p>
+        <div class="pp-ct-cutline-stage">
+          <div class="pp-ct-cutline-safe"></div>
+          <div class="pp-ct-cutline-border"></div>
+          <div class="pp-ct-cutline-inner">
+            <span class="pp-ct-cutline-icon">✂</span>
+            <span>Safe area &amp; cut margin shown</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Print-safe regen -->
+      <button class="btn btn-ghost-neon pp-ct-regen-btn" id="pp-ct-regen-btn"
+              onclick="ppCtApplyToDesign()" aria-label="Apply colors and regenerate">
+        ↺ Apply Colors &amp; Regenerate
+      </button>
+
+    </div><!-- /pp-color-toolkit -->
+
+    <!-- Action bar (appears after selecting a result) -->
+    <div id="ai-action-bar" class="ai-action-bar" style="display:none">
+
+      <!-- DPI Lock Panel -->
+      <div class="ai-dpi-panel">
+        <div class="ai-dpi-panel-row">
+          <label class="ai-dpi-label" for="ai-size-picker">Print size</label>
+          <select id="ai-size-picker" class="ai-size-picker" aria-label="Select print size"></select>
+        </div>
+        <div class="ai-dpi-readout">
+          <div class="ai-dpi-readout-row">
+            <span class="ai-dpi-readout-key">Required</span>
+            <span id="ai-dpi-required" class="ai-dpi-readout-val">—</span>
+          </div>
+          <div class="ai-dpi-readout-row">
+            <span class="ai-dpi-readout-key">Current</span>
+            <span id="ai-dpi-current" class="ai-dpi-readout-val">—</span>
+          </div>
+          <div class="ai-dpi-readout-row">
+            <span class="ai-dpi-readout-key">Status</span>
+            <span id="ai-dpi-status" class="ai-dpi-status-val">—</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ai-action-top">
+        <span id="ai-action-badge" class="ai-action-badge"></span>
+        <button id="ai-save-btn" class="ai-save-btn" aria-label="Save project">
+          Save Project
+        </button>
+      </div>
+      <div class="ai-action-btns">
+        <button id="ai-upscale-btn" class="btn btn-secondary" style="display:none"
+                aria-label="Upscale image for print quality">
+          ⬆ Upscale for Print
+        </button>
+        <button id="ai-to-sticker-btn" class="btn btn-primary"
+                aria-label="Send design to Sticker Lab">
+          🎨 Use in Sticker Lab
+        </button>
+        <button id="ai-to-design-btn" class="btn btn-secondary"
+                aria-label="Send design to Design Lab">
+          👕 Use in Design Lab
+        </button>
+      </div>
+    </div>
+
+    <!-- Save confirmation toast (inside modal) -->
+    <div id="ai-save-toast" class="ai-save-toast" style="display:none" aria-live="polite">
+      Saved. Ready when you are.
+    </div>
+
+    <!-- ================================================
+         MONEY ENGINE — shown after selecting a design
+         ================================================ -->
+    <div id="me-panel" class="me-panel" style="display:none" aria-label="Order options">
+
+      <!-- Print-ready confidence badge -->
+      <div class="me-print-ready" id="me-print-ready">
+        <span class="me-print-icon">&#10003;</span>
+        <div>
+          <strong>Print Ready</strong>
+          <span>300 DPI • Optimized • No fixes needed</span>
+        </div>
+      </div>
+
+      <!-- "This is for you" hit -->
+      <p class="me-perfect-line" id="me-perfect-line">
+        This would look perfect for a team, group, or event.
+      </p>
+
+      <!-- Quantity quick-picks -->
+      <div class="me-qty-row" aria-label="Choose quantity">
+        <button class="me-qty-btn" data-qty="1"  onclick="meSetQty(1)">Order 1</button>
+        <button class="me-qty-btn" data-qty="5"  onclick="meSetQty(5)">Order 5</button>
+        <button class="me-qty-btn me-qty-popular" data-qty="10" onclick="meSetQty(10)">Order 10 <span class="me-save-tag">Save 10%</span></button>
+        <button class="me-qty-btn" data-qty="25" onclick="meSetQty(25)">Order 25 <span class="me-save-tag">Save 20%</span></button>
+      </div>
+
+      <!-- Dynamic savings nudge -->
+      <p class="me-savings-nudge" id="me-savings-nudge" style="display:none"></p>
+
+      <!-- Social proof -->
+      <p class="me-social-proof">Groups like this usually order 10–25 pieces.</p>
+
+      <!-- Event detection -->
+      <div class="me-event-row" id="me-event-row">
+        <span class="me-event-label">Is this for a group or event?</span>
+        <button class="me-yn-btn me-yn-yes" onclick="meEventYes()">Yes</button>
+        <button class="me-yn-btn me-yn-no"  onclick="meEventNo()">No, just me</button>
+      </div>
+
+      <!-- Event type picker (shown if Yes) -->
+      <div class="me-event-types" id="me-event-types" style="display:none" aria-label="Event type">
+        <button class="ai-chip" onclick="meSelectEvent('Family Reunion')">Family Reunion</button>
+        <button class="ai-chip" onclick="meSelectEvent('Team Event')">Team Event</button>
+        <button class="ai-chip" onclick="meSelectEvent('Birthday')">Birthday</button>
+        <button class="ai-chip" onclick="meSelectEvent('Work Group')">Work Group</button>
+        <button class="ai-chip" onclick="meSelectEvent('Fundraiser')">Fundraiser</button>
+      </div>
+
+      <!-- Group mode (shown after event type picked) -->
+      <div class="me-group-mode" id="me-group-mode" style="display:none" aria-label="Group options">
+        <p class="me-group-heading">Make one for everyone?</p>
+        <div class="me-group-options">
+          <label class="me-group-opt">
+            <input type="radio" name="me-group" value="same" checked onchange="meGroupChange(this.value)">
+            <span>Same design for all</span>
+          </label>
+          <label class="me-group-opt">
+            <input type="radio" name="me-group" value="names" onchange="meGroupChange(this.value)">
+            <span>Name variations</span>
+          </label>
+          <label class="me-group-opt">
+            <input type="radio" name="me-group" value="numbers" onchange="meGroupChange(this.value)">
+            <span>Number variations</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- CTA row -->
+      <div class="me-cta-row">
+        <button class="btn btn-neon me-order-btn" id="me-order-btn" onclick="meAddToCart()">
+          Lock Design &amp; Order
+        </button>
+        <button class="btn btn-ghost-neon me-improve-btn" onclick="meImproveDesign()">
+          Try a Better Version
+        </button>
+      </div>
+
+      <!-- Add-ons (shown after order) -->
+      <div class="me-addons" id="me-addons" style="display:none" aria-label="Add-on options">
+        <p class="me-addons-heading">Add to your order:</p>
+        <div class="me-addon-grid">
+          <button class="me-addon-card" onclick="meAddon('stickers')">
+            <span class="me-addon-icon">🏷️</span>
+            <span class="me-addon-name">Matching Stickers</span>
+            <span class="me-addon-sub">Same design, sticker sheet</span>
+          </button>
+          <button class="me-addon-card" onclick="meAddon('hoodie')">
+            <span class="me-addon-icon">🧥</span>
+            <span class="me-addon-name">Hoodie Version</span>
+            <span class="me-addon-sub">Same design on a hoodie</span>
+          </button>
+          <button class="me-addon-card" onclick="meAddon('digital')">
+            <span class="me-addon-icon">💾</span>
+            <span class="me-addon-name">Digital Download</span>
+            <span class="me-addon-sub">300 DPI PNG file</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Share panel (shown after design selected) -->
+      <div class="me-share" id="me-share" style="display:none" aria-label="Share design">
+        <p class="me-share-heading">📣 Send this to your group</p>
+        <p class="me-share-sub">Share your design — friends can open it and order theirs too.</p>
+        <div class="me-share-row">
+          <input class="me-share-link-input" id="me-share-link-input" type="text" readonly
+                 value="" aria-label="Shareable design link" />
+          <button class="me-share-copy-btn" id="me-share-copy-btn" onclick="ppCopyShareLink()" aria-label="Copy link">
+            Copy
+          </button>
+        </div>
+        <div class="me-share-btns">
+          <button class="btn btn-ghost-neon me-share-btn" onclick="ppShareDesign('native')" aria-label="Share via device share sheet">
+            🔗 Share Design
+          </button>
+          <button class="btn btn-ghost-neon me-share-btn" onclick="ppShareDesign('message')" aria-label="Share via message">
+            💬 Send via Message
+          </button>
+        </div>
+        <p class="me-share-copied-msg" id="me-share-copied-msg" style="display:none">✔ Link copied!</p>
+      </div>
+
+      <!-- Reorder / duplicate system (shown after order confirmed) -->
+      <div class="me-reorder" id="me-reorder" style="display:none" aria-label="Reorder options">
+        <p class="me-reorder-heading">Do more with this design:</p>
+        <div class="me-reorder-grid">
+          <button class="me-reorder-btn" onclick="meReorder('same')">
+            <span class="me-reorder-icon">↻</span>
+            <span>Reorder same design</span>
+          </button>
+          <button class="me-reorder-btn" onclick="meReorder('stickers')">
+            <span class="me-reorder-icon">🏷️</span>
+            <span>Make matching stickers</span>
+          </button>
+          <button class="me-reorder-btn" onclick="meReorder('color')">
+            <span class="me-reorder-icon">🎨</span>
+            <span>Change color &amp; reorder</span>
+          </button>
+          <button class="me-reorder-btn" onclick="meReorder('event')">
+            <span class="me-reorder-icon">📋</span>
+            <span>Duplicate for another event</span>
+          </button>
+        </div>
+      </div>
+
+    </div><!-- /me-panel -->
+
+  </div><!-- /ai-gen-modal -->
+</div>
+
+
+<!-- ============================================================
+     TOAST NOTIFICATIONS
+     ============================================================ -->
+<div id="toast-container" class="toast-container" role="status" aria-live="polite" aria-atomic="true"></div>
+
+
+<!-- ============================================================
+     PWA INSTALL BANNER
+     ============================================================ -->
+<div id="install-banner" class="install-banner" role="complementary" aria-label="Install app">
+  <div class="install-banner-text">
+    <strong>⬡ Add to Home Screen</strong>
+    <span>Install PrintPath for faster access &amp; offline designing</span>
+  </div>
+  <div class="install-banner-actions">
+    <button id="install-dismiss" class="btn btn-ghost" aria-label="Dismiss install prompt">Not now</button>
+    <button id="install-btn" class="btn btn-primary" aria-label="Install app">Install</button>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     FOOTER
+     ============================================================ -->
+<footer role="contentinfo">
+  <div class="container">
+    <div class="footer-grid">
+
+      <div class="footer-brand">
+        <div class="navbar-logo" style="font-size:1.1rem;">
+          <span class="logo-icon">⬡</span>
+          Print<span class="logo-accent">Path</span>
+        </div>
+        <p class="footer-tagline">Design it. We make it print-perfect.</p>
+        <p>AI-powered. 300 DPI locked. Professional results — every time.</p>
+      </div>
+
+      <div class="footer-col">
+        <h4>Shop</h4>
+        <ul>
+          <li><a href="#" onclick="clearFilters(); return false;">All Tees</a></li>
+          <li><a href="#" onclick="clearFilters(); dom.searchInput.value='graphic'; state.searchQuery='graphic'; applyFilters(); return false;">Graphic Tees</a></li>
+          <li><a href="#" onclick="clearFilters(); dom.searchInput.value='oversized'; state.searchQuery='oversized'; applyFilters(); return false;">Oversized</a></li>
+          <li><a href="#" onclick="clearFilters(); dom.searchInput.value='classic'; state.searchQuery='classic'; applyFilters(); return false;">Basics</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Help</h4>
+        <ul>
+          <li><a href="#">Size Guide</a></li>
+          <li><a href="#">Shipping Info</a></li>
+          <li><a href="#">Returns</a></li>
+          <li><a href="#">Contact Us</a></li>
+        </ul>
+      </div>
+
+    </div>
+
+    <div class="footer-bottom">
+      <p>© 2026 PrintPath. All rights reserved.</p>
+      <p style="display:flex; gap:1rem;">
+        <a href="#" style="color:var(--text-muted); font-size:0.8rem;">Privacy</a>
+        <a href="#" style="color:var(--text-muted); font-size:0.8rem;">Terms</a>
+      </p>
+    </div>
+  </div>
+</footer>
+
+
+<!-- App Script -->
+<script src="ai-gen.js" defer></script>
+<script src="handoff.js" defer></script>
+<script src="sticker.js" defer></script>
+<script src="app.js" defer></script>
+
+</body>
+</html>

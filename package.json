@@ -1,0 +1,9 @@
+{
+  "name": "printpath",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "PrintPath — AI-powered merch design platform",
+  "dependencies": {
+    "openai": "^4.90.0"
+  }
+}

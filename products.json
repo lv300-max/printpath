@@ -1,0 +1,146 @@
+[
+  {
+    "id": 1,
+    "name": "Classic White Tee",
+    "price": 24.99,
+    "description": "A timeless classic. Our premium cotton white tee is soft, breathable, and built to last. Perfect for everyday wear.",
+    "images": [
+      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600&q=80",
+      "https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=600&q=80"
+    ],
+    "imageFront": "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800&q=80",
+    "imageBack":  "https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=800&q=80",
+    "sizes": ["S", "M", "L", "XL"],
+    "colors": ["White", "Black", "Gray"],
+    "category": "basics",
+    "badge": "bestseller",
+    "stock": 42,
+    "featuredDrop": false
+  },
+  {
+    "id": 2,
+    "name": "Neon Drift Tee",
+    "price": 32.99,
+    "description": "Stand out from the crowd. This bold graphic tee features striking neon-inspired artwork on premium heavyweight cotton.",
+    "images": [
+      "https://images.unsplash.com/photo-1503341504253-dff4815485f1?w=600&q=80",
+      "https://images.unsplash.com/photo-1562157873-818bc0726f68?w=600&q=80"
+    ],
+    "imageFront": "https://images.unsplash.com/photo-1503341504253-dff4815485f1?w=800&q=80",
+    "imageBack":  "https://images.unsplash.com/photo-1562157873-818bc0726f68?w=800&q=80",
+    "sizes": ["S", "M", "L", "XL"],
+    "colors": ["Black", "Navy"],
+    "category": "graphic",
+    "badge": "new",
+    "stock": 18,
+    "featuredDrop": true
+  },
+  {
+    "id": 3,
+    "name": "Midnight Oversized",
+    "price": 38.99,
+    "description": "The ultimate relaxed fit. Dropped shoulders, extra length — made from our signature heavy-weight cotton blend.",
+    "images": [
+      "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=600&q=80",
+      "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=600&q=80"
+    ],
+    "imageFront": "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=800&q=80",
+    "imageBack":  "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=800&q=80",
+    "sizes": ["S", "M", "L", "XL"],
+    "colors": ["Black", "Gray", "Olive"],
+    "category": "oversized",
+    "badge": "",
+    "stock": 30,
+    "featuredDrop": false
+  },
+  {
+    "id": 4,
+    "name": "Urban Pocket Tee",
+    "price": 27.99,
+    "description": "Minimalist design meets everyday utility. Features a clean chest pocket on our softest cotton jersey.",
+    "images": [
+      "https://images.unsplash.com/photo-1622445275576-721325763afe?w=600&q=80",
+      "https://images.unsplash.com/photo-1604006852748-903fccbc4019?w=600&q=80"
+    ],
+    "imageFront": "https://images.unsplash.com/photo-1622445275576-721325763afe?w=800&q=80",
+    "imageBack":  "https://images.unsplash.com/photo-1604006852748-903fccbc4019?w=800&q=80",
+    "sizes": ["S", "M", "L", "XL"],
+    "colors": ["White", "Navy", "Olive"],
+    "category": "basics",
+    "badge": "",
+    "stock": 55,
+    "featuredDrop": false
+  },
+  {
+    "id": 5,
+    "name": "Retro Wave Tee",
+    "price": 34.99,
+    "description": "Inspired by 80s aesthetics. Vintage wash treatment and a retro graphic print that gets better with every wash.",
+    "images": [
+      "https://images.unsplash.com/photo-1529374255404-311a2a4f1fd9?w=600&q=80",
+      "https://images.unsplash.com/photo-1567013127542-490d757e51fc?w=600&q=80"
+    ],
+    "imageFront": "https://images.unsplash.com/photo-1529374255404-311a2a4f1fd9?w=800&q=80",
+    "imageBack":  "https://images.unsplash.com/photo-1567013127542-490d757e51fc?w=800&q=80",
+    "sizes": ["S", "M", "L", "XL"],
+    "colors": ["Gray", "White", "Pink"],
+    "category": "graphic",
+    "badge": "sale",
+    "stock": 8,
+    "featuredDrop": false
+  },
+  {
+    "id": 6,
+    "name": "Essential V-Neck",
+    "price": 22.99,
+    "description": "A wardrobe essential. Our V-neck tee offers a flattering fit with just the right amount of stretch.",
+    "images": [
+      "https://images.unsplash.com/photo-1586790170083-2f9ceadc732d?w=600&q=80",
+      "https://images.unsplash.com/photo-1571945153237-4929e783af4a?w=600&q=80"
+    ],
+    "imageFront": "https://images.unsplash.com/photo-1586790170083-2f9ceadc732d?w=800&q=80",
+    "imageBack":  "https://images.unsplash.com/photo-1571945153237-4929e783af4a?w=800&q=80",
+    "sizes": ["S", "M", "L", "XL"],
+    "colors": ["White", "Black", "Navy", "Gray"],
+    "category": "basics",
+    "badge": "",
+    "stock": 60,
+    "featuredDrop": false
+  },
+  {
+    "id": 7,
+    "name": "Street Art Drop",
+    "price": 42.99,
+    "description": "Limited drop. Collaboration with local street artists. Each tee is a wearable canvas — 100% heavyweight cotton.",
+    "images": [
+      "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=600&q=80",
+      "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600&q=80"
+    ],
+    "imageFront": "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=800&q=80",
+    "imageBack":  "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=800&q=80",
+    "sizes": ["S", "M", "L", "XL"],
+    "colors": ["Black", "White"],
+    "category": "graphic",
+    "badge": "limited",
+    "stock": 5,
+    "featuredDrop": true
+  },
+  {
+    "id": 8,
+    "name": "Surf & Sand Long-Sleeve",
+    "price": 36.99,
+    "description": "Catch waves or catch vibes. This long-sleeve tee is lightweight, UV-resistant, and built for adventure.",
+    "images": [
+      "https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=600&q=80",
+      "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=600&q=80"
+    ],
+    "imageFront": "https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=800&q=80",
+    "imageBack":  "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=800&q=80",
+    "sizes": ["S", "M", "L", "XL"],
+    "colors": ["White", "Blue", "Coral"],
+    "category": "long-sleeve",
+    "badge": "new",
+    "stock": 22,
+    "featuredDrop": false
+  }
+]

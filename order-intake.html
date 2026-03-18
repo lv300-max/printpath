@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Order Intake — Print Shop</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:    #7c3aed;
+      --success:    #059669;
+      --danger:     #dc2626;
+      --text:       #111827;
+      --muted:      #6b7280;
+      --border:     #e5e7eb;
+      --bg:         #f9fafb;
+      --card:       #ffffff;
+      --radius:     14px;
+      --shadow:     0 4px 24px rgba(0,0,0,0.08);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --text:   #f1f5f9;
+        --muted:  #94a3b8;
+        --border: #334155;
+        --bg:     #0f172a;
+        --card:   #1e293b;
+      }
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .intake-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .intake-header .eyebrow {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--primary);
+      margin-bottom: 0.4rem;
+    }
+
+    .intake-header h1 {
+      font-size: 1.75rem;
+      font-weight: 800;
+    }
+
+    .intake-header p {
+      color: var(--muted);
+      margin-top: 0.4rem;
+      font-size: 0.9rem;
+    }
+
+    /* Error state */
+    .error-card {
+      background: #fee2e2;
+      color: #991b1b;
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem;
+      font-weight: 500;
+      line-height: 1.6;
+    }
+
+    /* Card */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .card-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--primary);
+      margin-bottom: 1rem;
+    }
+
+    /* Preview */
+    .preview-row {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .preview-img-wrap {
+      flex-shrink: 0;
+    }
+
+    .preview-img {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid var(--border);
+      background: rgba(124,58,237,0.07);
+      display: block;
+    }
+
+    .preview-img.rect {
+      border-radius: var(--radius);
+    }
+
+    .preview-meta h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 0.2rem;
+    }
+
+    /* Type chip */
+    .type-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: rgba(124,58,237,0.1);
+      color: var(--primary);
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.25rem 0.7rem;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.6rem;
+    }
+
+    /* Print-ready badge */
+    .ready-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.25rem 0.65rem;
+      border-radius: 999px;
+      text-transform: uppercase;
+    }
+
+    .ready-badge.pass { background: #d1fae5; color: #065f46; }
+    .ready-badge.fail { background: #fee2e2; color: #991b1b; }
+
+    /* Details table */
+    .details-table {
+      display: grid;
+      gap: 0.6rem;
+    }
+
+    .detail-row {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 0.5rem;
+      align-items: baseline;
+    }
+
+    .detail-row dt {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+    }
+
+    .detail-row dd {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    /* File link */
+    .file-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      color: var(--primary);
+      font-weight: 600;
+      font-size: 0.88rem;
+      text-decoration: none;
+    }
+
+    .file-link:hover { text-decoration: underline; }
+
+    /* Notes box */
+    .notes-box {
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      font-size: 0.88rem;
+      line-height: 1.6;
+      color: var(--text);
+      white-space: pre-wrap;
+    }
+
+    /* Attribution */
+    .attribution {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 0.75rem 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .attribution strong { color: var(--text); }
+
+    /* CTA */
+    .btn-checkout {
+      width: 100%;
+      padding: 0.9rem 1.5rem;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s ease, transform 0.1s ease;
+    }
+
+    .btn-checkout:hover { opacity: 0.92; transform: translateY(-1px); }
+    .btn-checkout:active { transform: translateY(0); }
+
+    .btn-checkout:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .checkout-note {
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+    }
+
+    /* Footer */
+    .intake-footer {
+      text-align: center;
+      margin-top: 2rem;
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <header class="intake-header">
+      <p class="eyebrow">Print Order</p>
+      <h1>Order Summary</h1>
+      <p>Review your order details before checking out.</p>
+    </header>
+
+    <!-- Error state (hidden by default) -->
+    <div id="error-card" class="error-card" style="display:none"></div>
+
+    <!-- Order summary card -->
+    <div id="order-card" class="card" style="display:none">
+      <p class="card-title">Your Design</p>
+
+      <div class="preview-row">
+        <div class="preview-img-wrap">
+          <img id="oi-preview" class="preview-img" src="" alt="Design preview" />
+        </div>
+        <div class="preview-meta">
+          <div id="oi-type-chip" class="type-chip"></div>
+          <h2 id="oi-product-name"></h2>
+          <div id="oi-ready-badge" class="ready-badge"></div>
+        </div>
+      </div>
+
+      <dl class="details-table">
+        <div class="detail-row">
+          <dt>Size</dt>
+          <dd id="oi-size"></dd>
+        </div>
+        <div class="detail-row">
+          <dt>DPI</dt>
+          <dd id="oi-dpi"></dd>
+        </div>
+        <div class="detail-row">
+          <dt>Quantity</dt>
+          <dd id="oi-qty"></dd>
+        </div>
+        <div class="detail-row">
+          <dt>Finish</dt>
+          <dd id="oi-finish"></dd>
+        </div>
+        <div class="detail-row">
+          <dt>Cut</dt>
+          <dd id="oi-cut"></dd>
+        </div>
+        <div class="detail-row" id="oi-file-row">
+          <dt>Print File</dt>
+          <dd><a id="oi-file-link" class="file-link" href="#" target="_blank">⬇ Download</a></dd>
+        </div>
+        <div class="detail-row" id="oi-notes-row" style="display:none">
+          <dt>Notes</dt>
+          <dd><div id="oi-notes" class="notes-box"></div></dd>
+        </div>
+        <div class="detail-row" id="oi-id-row" style="display:none">
+          <dt>Order ID</dt>
+          <dd id="oi-id" style="font-family:monospace;font-size:0.78rem;word-break:break-all"></dd>
+        </div>
+      </dl>
+    </div>
+
+    <!-- Attribution / referral -->
+    <div id="attribution-row" class="attribution" style="display:none">
+      <span>Referred by <strong id="oi-source"></strong></span>
+      <span id="oi-ref-row" style="display:none">Ref: <strong id="oi-ref"></strong></span>
+      <span id="oi-cc-row" style="display:none">Commission: <strong id="oi-cc"></strong></span>
+    </div>
+
+    <!-- Checkout CTA -->
+    <div id="checkout-section" style="display:none">
+      <!-- =====================================================
+           HOOK YOUR PAYMENT / CART SYSTEM HERE
+           Replace the button onclick with your checkout logic.
+           All order params are available in window.intakeOrder
+           ===================================================== -->
+      <button class="btn-checkout" id="oi-checkout-btn" onclick="handleCheckout()">
+        Proceed to Checkout →
+      </button>
+      <p class="checkout-note">You'll be able to review pricing on the next screen.</p>
+    </div>
+
+    <footer class="intake-footer">
+      Powered by PrintPath &nbsp;|&nbsp; Questions? Contact us.
+    </footer>
+
+  </div><!-- /container -->
+
+  <script>
+    // =====================================================
+    //  ORDER INTAKE — reads URL params, renders summary
+    //  No dependencies — vanilla JS only.
+    // =====================================================
+
+    // Product type display config (add more types here as needed)
+    const PRODUCT_TYPES = {
+      custom_sticker: { label: 'Custom Sticker',  icon: '🎨', round: true  },
+      tshirt:         { label: 'Custom T-Shirt',  icon: '👕', round: false },
+      banner:         { label: 'Custom Banner',   icon: '🏳',  round: false },
+      decal:          { label: 'Custom Decal',    icon: '✂️', round: false },
+      label:          { label: 'Custom Label',    icon: '🏷',  round: false },
+    };
+
+    // ---- Parse URL params ----
+    const params  = new URLSearchParams(window.location.search);
+
+    const REQUIRED = ['type', 'preview', 'file', 'w', 'h', 'dpi', 'qty'];
+    const missing  = REQUIRED.filter(k => !params.get(k));
+
+    function $(id) { return document.getElementById(id); }
+
+    function showError(msg) {
+      const el = $('error-card');
+      el.innerHTML = msg;
+      el.style.display = 'block';
+      $('order-card').style.display       = 'none';
+      $('checkout-section').style.display = 'none';
+      $('attribution-row').style.display  = 'none';
+    }
+
+    function capFirst(str) {
+      return (str || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    function renderOrder() {
+      if (missing.length > 0) {
+        showError(`<strong>Missing order parameters:</strong><br>${missing.map(k => '• ' + k).join('<br>')}`);
+        return;
+      }
+
+      const type     = params.get('type');
+      const preview  = params.get('preview');
+      const file     = params.get('file');
+      const w        = params.get('w');
+      const h        = params.get('h');
+      const dpi      = parseInt(params.get('dpi'), 10) || 0;
+      const qty      = params.get('qty');
+      const finish   = params.get('finish')  || 'matte';
+      const cut      = params.get('cut')     || 'die_cut';
+      const source   = params.get('source')  || '';
+      const notes    = params.get('notes')   || '';
+      const ref      = params.get('ref')     || '';
+      const cc       = params.get('cc')      || '';
+      const id       = params.get('id')      || '';
+
+      // Expose full order for checkout hook
+      window.intakeOrder = { type, preview, file, w, h, dpi, qty, finish, cut, source, notes, ref, cc, id };
+
+      // Product type config
+      const typeConf = PRODUCT_TYPES[type] || { label: capFirst(type), icon: '📦', round: false };
+
+      // Preview image
+      const previewEl = $('oi-preview');
+      previewEl.src = preview;
+      previewEl.alt = typeConf.label + ' preview';
+      if (!typeConf.round) previewEl.classList.add('rect');
+
+      // Type chip
+      $('oi-type-chip').textContent = typeConf.icon + ' ' + typeConf.label;
+
+      // Product name
+      $('oi-product-name').textContent = `${typeConf.label} — ${w}" × ${h}"`;
+
+      // Print-ready badge
+      const readyEl = $('oi-ready-badge');
+      if (dpi >= 300) {
+        readyEl.className = 'ready-badge pass';
+        readyEl.textContent = '✓ Print Ready';
+      } else {
+        readyEl.className = 'ready-badge fail';
+        readyEl.textContent = `✕ Low DPI (${dpi}) — may print blurry`;
+      }
+
+      // Details
+      $('oi-size').textContent   = `${w}" × ${h}"`;
+      $('oi-dpi').textContent    = dpi + ' DPI' + (dpi >= 300 ? ' ✓' : ' ⚠️ Low');
+      $('oi-qty').textContent    = qty;
+      $('oi-finish').textContent = capFirst(finish);
+      $('oi-cut').textContent    = capFirst(cut);
+
+      // Print file link
+      const fileLink = $('oi-file-link');
+      fileLink.href = file;
+      fileLink.textContent = '⬇ Download Print File';
+
+      // Notes
+      if (notes) {
+        $('oi-notes').textContent   = notes;
+        $('oi-notes-row').style.display = 'grid';
+      }
+
+      // Order ID (show if present)
+      if (id) {
+        $('oi-id').textContent       = id;
+        $('oi-id-row').style.display = 'grid';
+      }
+
+      // Attribution / referral
+      if (source || ref || cc) {
+        $('attribution-row').style.display = 'flex';
+        if (source) $('oi-source').textContent = source;
+        if (ref) {
+          $('oi-ref').textContent        = ref;
+          $('oi-ref-row').style.display  = 'inline';
+        }
+        if (cc) {
+          $('oi-cc').textContent        = cc;
+          $('oi-cc-row').style.display  = 'inline';
+        }
+      }
+
+      // Show sections
+      $('order-card').style.display       = 'block';
+      $('checkout-section').style.display = 'block';
+    }
+
+    // ---- Checkout hook ----
+    function handleCheckout() {
+      // =====================================================
+      //  REPLACE THIS FUNCTION WITH YOUR CHECKOUT LOGIC
+      //
+      //  All order data is in window.intakeOrder
+      //  Example integrations:
+      //    - Add to your store's cart: addToCart(window.intakeOrder)
+      //    - Post to your API:         fetch('/api/orders', { method:'POST', body: JSON.stringify(window.intakeOrder) })
+      //    - Redirect to Stripe:       window.location.href = buildStripeUrl(window.intakeOrder)
+      //
+      // =====================================================
+      const btn = $('oi-checkout-btn');
+      btn.disabled = true;
+      btn.textContent = 'Processing…';
+
+      // --- PLACEHOLDER: remove and add your real checkout below ---
+      setTimeout(() => {
+        alert('✅ Checkout integration goes here!\n\nOrder data is in window.intakeOrder');
+        btn.disabled = false;
+        btn.textContent = 'Proceed to Checkout →';
+      }, 500);
+      // --- END PLACEHOLDER ---
+    }
+
+    // Run on page load
+    renderOrder();
+  </script>
+</body>
+</html>

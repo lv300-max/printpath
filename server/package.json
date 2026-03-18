@@ -1,0 +1,17 @@
+{
+  "name": "printpath-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "PrintPath backend — OpenAI prompt cleaning",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "openai": "^4.90.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7"
+  }
+}

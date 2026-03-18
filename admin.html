@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — PrintPath Orders</title>
+  <style>
+    /* ===== RESET + TOKENS ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:      #00e5a0;
+      --primary-dim:  rgba(0,229,160,0.10);
+      --primary-dark: #030d09;
+      --success:      #059669;
+      --success-dim:  rgba(5,150,105,0.12);
+      --danger:       #dc2626;
+      --danger-dim:   rgba(220,38,38,0.12);
+      --warn:         #d97706;
+      --warn-dim:     rgba(217,119,6,0.12);
+      --text:         #f0f0ff;
+      --text-muted:   #94a3b8;
+      --border:       #1a1a2e;
+      --bg:           #07070d;
+      --surface:      #0e0e18;
+      --surface2:     #13131e;
+      --radius:       12px;
+      --radius-sm:    8px;
+      --shadow:       0 2px 12px rgba(0,0,0,0.4);
+      --shadow-lg:    0 8px 32px rgba(0,0,0,0.6);
+      --font:         -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      --mono:         'SF Mono', 'Fira Code', 'Consolas', monospace;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 14px;
+    }
+
+    /* ===== LAYOUT ===== */
+    .admin-shell {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      min-height: 100vh;
+    }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 1.5rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 800;
+      font-size: 1.05rem;
+      color: var(--primary);
+      margin-bottom: 1.25rem;
+      text-decoration: none;
+    }
+
+    .sidebar-section {
+      font-size: 0.62rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      padding: 0.75rem 0.5rem 0.35rem;
+    }
+
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text);
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      width: 100%;
+      text-align: left;
+      transition: background 0.12s ease;
+    }
+
+    .sidebar-link:hover { background: var(--primary-dim); color: var(--primary); }
+    .sidebar-link.active { background: var(--primary-dim); color: var(--primary); font-weight: 700; }
+
+    .sidebar-link svg { flex-shrink: 0; opacity: 0.7; }
+
+    .sidebar-spacer { flex: 1; }
+
+    .sidebar-footer {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      padding: 0.5rem;
+      border-top: 1px solid var(--border);
+      margin-top: 0.5rem;
+    }
+
+    /* ===== MAIN ===== */
+    .admin-main {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    /* ===== TOPBAR ===== */
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0.85rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .topbar-title {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* ===== BUTTONS ===== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.45rem 0.9rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      transition: opacity 0.12s ease, transform 0.1s ease;
+      text-decoration: none;
+    }
+
+    .btn:active { transform: scale(0.97); }
+
+    .btn-primary {
+      background: var(--primary);
+      color: var(--primary-dark, #030d09);
+      border-color: var(--primary);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border-color: var(--border);
+    }
+
+    .btn-secondary:hover { border-color: var(--primary); color: var(--primary); }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--danger);
+      border-color: var(--danger);
+    }
+
+    .btn-danger:hover { background: var(--danger-dim); }
+
+    .btn-sm { padding: 0.3rem 0.65rem; font-size: 0.72rem; }
+
+    /* ===== CONTENT AREA ===== */
+    .admin-content {
+      padding: 1.5rem;
+      flex: 1;
+    }
+
+    /* ===== STAT CARDS ===== */
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.25rem;
+      border: 1px solid var(--border);
+    }
+
+    .stat-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+    }
+
+    .stat-value {
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .stat-sub {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 0.3rem;
+    }
+
+    /* ===== FILTER BAR ===== */
+    .filter-bar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.85rem 1rem;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      margin-bottom: 1rem;
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .filter-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .filter-select,
+    .filter-input {
+      padding: 0.35rem 0.65rem;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 0.8rem;
+      font-family: var(--font);
+      min-width: 120px;
+    }
+
+    .filter-select:focus,
+    .filter-input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .filter-input[type="date"] { min-width: 140px; }
+
+    .filter-spacer { flex: 1; }
+
+    /* ===== TABLE ===== */
+    .table-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .table-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border);
+      gap: 0.75rem;
+    }
+
+    .table-meta {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .table-meta strong { color: var(--text); }
+
+    .orders-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .orders-table thead th {
+      padding: 0.6rem 0.85rem;
+      text-align: left;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text-muted);
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .orders-table thead th:hover { color: var(--primary); }
+
+    .orders-table thead th .sort-arrow {
+      display: inline-block;
+      margin-left: 3px;
+      opacity: 0.4;
+      font-size: 0.65rem;
+    }
+
+    .orders-table thead th.sorted .sort-arrow { opacity: 1; color: var(--primary); }
+
+    .orders-table tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.1s ease;
+    }
+
+    .orders-table tbody tr:last-child { border-bottom: none; }
+    .orders-table tbody tr:hover { background: var(--primary-dim); }
+
+    .orders-table td {
+      padding: 0.7rem 0.85rem;
+      vertical-align: middle;
+      font-size: 0.82rem;
+    }
+
+    /* Preview thumbnail */
+    .order-thumb {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--border);
+      background: var(--bg);
+      display: block;
+    }
+
+    /* Design ID */
+    .design-id {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      max-width: 130px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Status badges */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+
+    .status-badge.sent      { background: var(--primary-dim); color: var(--primary); }
+    .status-badge.fulfilled { background: var(--success-dim); color: var(--success); }
+    .status-badge.cancelled { background: var(--danger-dim);  color: var(--danger);  }
+
+    /* Status selector in cell */
+    .status-select {
+      padding: 0.2rem 0.4rem;
+      border-radius: 6px;
+      border: 1.5px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 0.75rem;
+      font-weight: 600;
+      font-family: var(--font);
+      cursor: pointer;
+    }
+
+    .status-select:focus { outline: none; border-color: var(--primary); }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 3.5rem 1rem;
+      color: var(--text-muted);
+    }
+
+    .empty-state .empty-icon {
+      font-size: 2.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .empty-state h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 0.3rem;
+    }
+
+    .empty-state p { font-size: 0.82rem; }
+
+    /* ===== DETAIL DRAWER ===== */
+    .drawer-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 200;
+      backdrop-filter: blur(3px);
+    }
+
+    .drawer-overlay.open { display: flex; justify-content: flex-end; }
+
+    .drawer {
+      background: var(--surface);
+      width: 380px;
+      max-width: 95vw;
+      height: 100%;
+      overflow-y: auto;
+      box-shadow: var(--shadow-lg);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .drawer-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    .drawer-title { font-size: 1rem; font-weight: 700; }
+
+    .drawer-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      padding: 0.2rem;
+      border-radius: 6px;
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+
+    .drawer-close:hover { color: var(--danger); }
+
+    .drawer-preview {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid var(--border);
+      display: block;
+      margin: 0 auto;
+    }
+
+    .drawer-section-title {
+      font-size: 0.67rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+    }
+
+    .drawer-table { display: grid; gap: 0.45rem; }
+
+    .drawer-row {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 0.5rem;
+      align-items: baseline;
+    }
+
+    .drawer-row dt {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+    }
+
+    .drawer-row dd {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .drawer-link {
+      font-size: 0.8rem;
+      color: var(--primary);
+      word-break: break-all;
+      text-decoration: none;
+    }
+
+    .drawer-link:hover { text-decoration: underline; }
+
+    .drawer-notes {
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.65rem 0.85rem;
+      font-size: 0.82rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .drawer-actions { display: flex; flex-direction: column; gap: 0.5rem; }
+
+    /* ===== TOAST (lightweight) ===== */
+    #admin-toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: var(--text);
+      color: var(--bg);
+      padding: 0.65rem 1.1rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.82rem;
+      font-weight: 600;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    #admin-toast.show { opacity: 1; transform: translateY(0); }
+
+    /* ===== MOBILE ===== */
+    @media (max-width: 768px) {
+      .admin-shell { grid-template-columns: 1fr; }
+      .sidebar {
+        position: static;
+        height: auto;
+        flex-direction: row;
+        flex-wrap: wrap;
+        padding: 0.75rem;
+        gap: 0.25rem;
+        overflow-x: auto;
+      }
+      .sidebar-logo { margin-bottom: 0; }
+      .sidebar-section { display: none; }
+      .sidebar-spacer, .sidebar-footer { display: none; }
+      .stat-row { grid-template-columns: repeat(2, 1fr); }
+      .orders-table thead th:nth-child(n+6) { display: none; }
+      .orders-table td:nth-child(n+6) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="admin-shell">
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar">
+    <a href="index.html" class="sidebar-logo">
+      <span>⬡</span> Print<span style="color:var(--primary)">Path</span>
+    </a>
+
+    <span class="sidebar-section">Orders</span>
+    <button class="sidebar-link active" onclick="showView('orders')">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+      Handoff Orders
+    </button>
+
+    <span class="sidebar-section">Tools</span>
+    <button class="sidebar-link" onclick="exportCSV()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Export CSV
+    </button>
+    <button class="sidebar-link" onclick="seedDemoData()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      Add Demo Orders
+    </button>
+    <button class="sidebar-link" onclick="confirmClearAll()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      Clear All Orders
+    </button>
+
+    <div class="sidebar-spacer"></div>
+    <div class="sidebar-footer">PrintPath Admin v1.0<br>Orders stored in browser localStorage</div>
+  </aside>
+
+  <!-- ===== MAIN ===== -->
+  <div class="admin-main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div>
+        <span class="topbar-title">⬡ PrintPath Orders</span>
+        <div style="font-size:0.72rem; color:var(--text-muted); margin-top:0.1rem;">All files are print-ready</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-secondary btn-sm" onclick="refreshOrders()">↺ Refresh</button>
+        <button class="btn btn-primary btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="admin-content">
+
+      <!-- Stat cards -->
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="stat-label">Total Orders</div>
+          <div class="stat-value" id="stat-total">—</div>
+          <div class="stat-sub">all time</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Sent</div>
+          <div class="stat-value" id="stat-sent" style="color:var(--primary)">—</div>
+          <div class="stat-sub">awaiting fulfilment</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Fulfilled</div>
+          <div class="stat-value" id="stat-fulfilled" style="color:var(--success)">—</div>
+          <div class="stat-sub">completed</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Units</div>
+          <div class="stat-value" id="stat-units">—</div>
+          <div class="stat-sub">stickers ordered</div>
+        </div>
+      </div>
+
+      <!-- Filter bar -->
+      <div class="filter-bar">
+        <div class="filter-group">
+          <span class="filter-label">From</span>
+          <input type="date" id="filter-date-from" class="filter-input" onchange="applyFilters()" />
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">To</span>
+          <input type="date" id="filter-date-to" class="filter-input" onchange="applyFilters()" />
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Status</span>
+          <select id="filter-status" class="filter-select" onchange="applyFilters()">
+            <option value="">All</option>
+            <option value="sent">Sent</option>
+            <option value="fulfilled">Fulfilled</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Size</span>
+          <select id="filter-size" class="filter-select" onchange="applyFilters()">
+            <option value="">All Sizes</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Min Qty</span>
+          <input type="number" id="filter-qty-min" class="filter-input" min="1" placeholder="—"
+            style="width:70px" onchange="applyFilters()" />
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Max Qty</span>
+          <input type="number" id="filter-qty-max" class="filter-input" min="1" placeholder="—"
+            style="width:70px" onchange="applyFilters()" />
+        </div>
+        <div class="filter-spacer"></div>
+        <button class="btn btn-secondary btn-sm" onclick="clearFilters()">✕ Clear</button>
+      </div>
+
+      <!-- Table -->
+      <div class="table-wrap">
+        <div class="table-header-row">
+          <span class="table-meta" id="table-meta">Loading…</span>
+          <button class="btn btn-secondary btn-sm" onclick="exportFilteredCSV()">⬇ Export filtered</button>
+        </div>
+        <table class="orders-table" id="orders-table">
+          <thead>
+            <tr>
+              <th onclick="sortBy('thumb')" style="width:52px"></th>
+              <th onclick="sortBy('timestamp')">Date <span class="sort-arrow" id="sort-timestamp">↕</span></th>
+              <th onclick="sortBy('designId')">Design ID <span class="sort-arrow" id="sort-designId">↕</span></th>
+              <th onclick="sortBy('orderType')">Type <span class="sort-arrow" id="sort-orderType">↕</span></th>
+              <th onclick="sortBy('size')">Size <span class="sort-arrow" id="sort-size">↕</span></th>
+              <th onclick="sortBy('dpi')">DPI <span class="sort-arrow" id="sort-dpi">↕</span></th>
+              <th onclick="sortBy('quantity')">Qty <span class="sort-arrow" id="sort-quantity">↕</span></th>
+              <th onclick="sortBy('finish')">Finish <span class="sort-arrow" id="sort-finish">↕</span></th>
+              <th onclick="sortBy('cutType')">Cut <span class="sort-arrow" id="sort-cutType">↕</span></th>
+              <th onclick="sortBy('status')">Status <span class="sort-arrow" id="sort-status">↕</span></th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="orders-tbody"></tbody>
+        </table>
+      </div>
+
+    </div><!-- /admin-content -->
+  </div><!-- /admin-main -->
+</div><!-- /admin-shell -->
+
+<!-- ===== DETAIL DRAWER ===== -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer(event)">
+  <div class="drawer" id="drawer">
+    <div class="drawer-header">
+      <span class="drawer-title">Order Detail</span>
+      <button class="drawer-close" onclick="closeDrawer(null)">✕</button>
+    </div>
+
+    <img id="drawer-preview" class="drawer-preview" src="" alt="Design preview" />
+
+    <div>
+      <div class="drawer-section-title">Order Info</div>
+      <dl class="drawer-table">
+        <div class="drawer-row"><dt>Design ID</dt><dd id="dr-id" style="font-family:var(--mono);font-size:0.7rem;word-break:break-all"></dd></div>
+        <div class="drawer-row"><dt>Date</dt>     <dd id="dr-date"></dd></div>
+        <div class="drawer-row"><dt>Type</dt>     <dd id="dr-type"></dd></div>
+        <div class="drawer-row"><dt>Size</dt>     <dd id="dr-size"></dd></div>
+        <div class="drawer-row"><dt>DPI</dt>      <dd id="dr-dpi"></dd></div>
+        <div class="drawer-row"><dt>Quantity</dt> <dd id="dr-qty"></dd></div>
+        <div class="drawer-row"><dt>Finish</dt>   <dd id="dr-finish"></dd></div>
+        <div class="drawer-row"><dt>Cut</dt>      <dd id="dr-cut"></dd></div>
+        <div class="drawer-row"><dt>Ref</dt>      <dd id="dr-ref"></dd></div>
+      </dl>
+    </div>
+
+    <div id="dr-notes-section">
+      <div class="drawer-section-title">Customer Notes</div>
+      <div class="drawer-notes" id="dr-notes"></div>
+    </div>
+
+    <div>
+      <div class="drawer-section-title">Status</div>
+      <select class="status-select" id="dr-status-select" style="width:100%;padding:0.5rem 0.75rem;font-size:0.85rem" onchange="updateStatusFromDrawer(this.value)">
+        <option value="sent">Sent</option>
+        <option value="fulfilled">Fulfilled</option>
+        <option value="cancelled">Cancelled</option>
+      </select>
+    </div>
+
+    <div>
+      <div class="drawer-section-title">Redirect URL</div>
+      <a id="dr-url" class="drawer-link" href="#" target="_blank" rel="noopener">—</a>
+    </div>
+
+    <div class="drawer-actions">
+      <button class="btn btn-primary" onclick="closeDrawer(null)">Done</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteOrderFromDrawer()">🗑 Delete this order</button>
+    </div>
+  </div>
+</div>
+
+<!-- Admin toast -->
+<div id="admin-toast"></div>
+
+<script>
+/* ============================================================
+   PrintPath Admin — Order Log
+   Reads from localStorage key: td-outgoing-orders
+   No dependencies on other store files.
+============================================================ */
+
+const ORDER_LOG_KEY = 'td-outgoing-orders';
+
+// ---- State ----
+let allOrders     = [];    // raw from localStorage
+let filteredOrders = [];   // after filters
+let sortField     = 'timestamp';
+let sortDir       = 'desc'; // 'asc' | 'desc'
+let activeDrawerDesignId = null;
+
+// ---- Bootstrap ----
+document.addEventListener('DOMContentLoaded', () => {
+  refreshOrders();
+});
+
+// ---- Load + render ----
+function refreshOrders() {
+  allOrders = loadOrders();
+  populateSizeFilter();
+  applyFilters();
+  updateStats();
+}
+
+function loadOrders() {
+  try {
+    const raw = localStorage.getItem(ORDER_LOG_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (_) { return []; }
+}
+
+function saveOrders(orders) {
+  try {
+    localStorage.setItem(ORDER_LOG_KEY, JSON.stringify(orders));
+  } catch (e) {
+    adminToast('Could not save — localStorage full?');
+  }
+}
+
+// ---- Stats ----
+function updateStats() {
+  const total     = allOrders.length;
+  const sent      = allOrders.filter(o => (o.status || 'sent') === 'sent').length;
+  const fulfilled = allOrders.filter(o => o.status === 'fulfilled').length;
+  const units     = allOrders.reduce((s, o) => s + (Number(o.quantity) || 0), 0);
+
+  document.getElementById('stat-total').textContent     = total;
+  document.getElementById('stat-sent').textContent      = sent;
+  document.getElementById('stat-fulfilled').textContent = fulfilled;
+  document.getElementById('stat-units').textContent     = units;
+}
+
+// ---- Size filter options ----
+function populateSizeFilter() {
+  const sizes = [...new Set(allOrders.map(o => sizeLabel(o)).filter(Boolean))].sort();
+  const sel   = document.getElementById('filter-size');
+  const prev  = sel.value;
+  sel.innerHTML = '<option value="">All Sizes</option>' +
+    sizes.map(s => `<option value="${s}"${s===prev?' selected':''}>${s}</option>`).join('');
+}
+
+function sizeLabel(o) {
+  if (!o.widthInches && !o.heightInches) return '';
+  return `${o.widthInches}" × ${o.heightInches}"`;
+}
+
+// ---- Filters ----
+function applyFilters() {
+  const dateFrom  = document.getElementById('filter-date-from').value;
+  const dateTo    = document.getElementById('filter-date-to').value;
+  const status    = document.getElementById('filter-status').value;
+  const size      = document.getElementById('filter-size').value;
+  const qtyMin    = parseInt(document.getElementById('filter-qty-min').value) || 0;
+  const qtyMax    = parseInt(document.getElementById('filter-qty-max').value) || Infinity;
+
+  filteredOrders = allOrders.filter(o => {
+    const ts = o.timestamp ? new Date(o.timestamp) : null;
+
+    if (dateFrom && ts && ts < new Date(dateFrom + 'T00:00:00'))   return false;
+    if (dateTo   && ts && ts > new Date(dateTo   + 'T23:59:59'))   return false;
+    if (status && (o.status || 'sent') !== status)                  return false;
+    if (size   && sizeLabel(o) !== size)                            return false;
+    if (o.quantity < qtyMin || o.quantity > qtyMax)                 return false;
+
+    return true;
+  });
+
+  sortOrders();
+  renderTable();
+  document.getElementById('table-meta').innerHTML =
+    `Showing <strong>${filteredOrders.length}</strong> of <strong>${allOrders.length}</strong> orders`;
+}
+
+function clearFilters() {
+  document.getElementById('filter-date-from').value = '';
+  document.getElementById('filter-date-to').value   = '';
+  document.getElementById('filter-status').value    = '';
+  document.getElementById('filter-size').value      = '';
+  document.getElementById('filter-qty-min').value   = '';
+  document.getElementById('filter-qty-max').value   = '';
+  applyFilters();
+}
+
+// ---- Sort ----
+function sortBy(field) {
+  if (sortField === field) {
+    sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    sortField = field;
+    sortDir   = field === 'timestamp' ? 'desc' : 'asc';
+  }
+  // Update arrow indicators
+  document.querySelectorAll('.sort-arrow').forEach(el => el.textContent = '↕');
+  const arrowEl = document.getElementById('sort-' + field);
+  if (arrowEl) arrowEl.textContent = sortDir === 'asc' ? '↑' : '↓';
+
+  // Mark sorted column header
+  document.querySelectorAll('.orders-table thead th').forEach(th => th.classList.remove('sorted'));
+  const ths = document.querySelectorAll('.orders-table thead th');
+  ths.forEach(th => {
+    const arrow = th.querySelector('.sort-arrow');
+    if (arrow && arrow.id === 'sort-' + field) th.classList.add('sorted');
+  });
+
+  sortOrders();
+  renderTable();
+}
+
+function sortOrders() {
+  filteredOrders.sort((a, b) => {
+    let va, vb;
+    if (sortField === 'size') {
+      va = (a.widthInches || 0) * (a.heightInches || 0);
+      vb = (b.widthInches || 0) * (b.heightInches || 0);
+    } else {
+      va = a[sortField] ?? '';
+      vb = b[sortField] ?? '';
+    }
+    if (typeof va === 'string') va = va.toLowerCase();
+    if (typeof vb === 'string') vb = vb.toLowerCase();
+    if (va < vb) return sortDir === 'asc' ? -1 : 1;
+    if (va > vb) return sortDir === 'asc' ?  1 : -1;
+    return 0;
+  });
+}
+
+// ---- Render table ----
+function renderTable() {
+  const tbody = document.getElementById('orders-tbody');
+  if (filteredOrders.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="11">
+      <div class="empty-state">
+        <div class="empty-icon">📭</div>
+        <h3>No orders found</h3>
+        <p>Send a sticker order from the store, or use "Add Demo Orders" to seed test data.</p>
+      </div>
+    </td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filteredOrders.map((o, i) => {
+    const status  = o.status || 'sent';
+    const date    = o.timestamp ? new Date(o.timestamp).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '—';
+    const time    = o.timestamp ? new Date(o.timestamp).toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' }) : '';
+    const size    = sizeLabel(o) || '—';
+    const typeStr = capFirst(o.orderType || '');
+    const cut     = capFirst((o.cutType || '').replace(/_/g,' '));
+    const finish  = capFirst(o.finish || '');
+    const shortId = (o.designId || '').slice(0,18) + ((o.designId||'').length > 18 ? '…' : '');
+
+    return `<tr onclick="openDrawer('${escAttr(o.designId)}')" style="cursor:pointer">
+      <td>
+        ${o.previewImage
+          ? `<img class="order-thumb" src="${escAttr(o.previewImage)}" alt="preview" onerror="this.style.display='none'">`
+          : `<div class="order-thumb" style="display:flex;align-items:center;justify-content:center;font-size:1.1rem">🎨</div>`}
+      </td>
+      <td>
+        <div style="font-weight:600;font-size:0.82rem">${date}</div>
+        <div style="font-size:0.7rem;color:var(--text-muted)">${time}</div>
+      </td>
+      <td><span class="design-id" title="${escAttr(o.designId)}">${shortId}</span></td>
+      <td>${typeStr}</td>
+      <td>${size}</td>
+      <td>${o.dpi || '—'}</td>
+      <td style="font-weight:700">${o.quantity || '—'}</td>
+      <td>${finish}</td>
+      <td>${cut}</td>
+      <td onclick="event.stopPropagation()">
+        <select class="status-select" onchange="updateStatus('${escAttr(o.designId)}', this.value)">
+          <option value="sent"${status==='sent'?' selected':''}>Sent</option>
+          <option value="fulfilled"${status==='fulfilled'?' selected':''}>Fulfilled</option>
+          <option value="cancelled"${status==='cancelled'?' selected':''}>Cancelled</option>
+        </select>
+      </td>
+      <td onclick="event.stopPropagation()">
+        <button class="btn btn-secondary btn-sm" onclick="openDrawer('${escAttr(o.designId)}')">View</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ---- Status update ----
+function updateStatus(designId, newStatus) {
+  allOrders = allOrders.map(o =>
+    o.designId === designId ? Object.assign({}, o, { status: newStatus }) : o
+  );
+  saveOrders(allOrders);
+  updateStats();
+
+  // Also update drawer if open
+  if (activeDrawerDesignId === designId) {
+    document.getElementById('dr-status-select').value = newStatus;
+  }
+  adminToast('Status updated → ' + capFirst(newStatus));
+}
+
+function updateStatusFromDrawer(newStatus) {
+  if (activeDrawerDesignId) {
+    updateStatus(activeDrawerDesignId, newStatus);
+    applyFilters();
+  }
+}
+
+// ---- Detail drawer ----
+function openDrawer(designId) {
+  const o = allOrders.find(x => x.designId === designId);
+  if (!o) return;
+  activeDrawerDesignId = designId;
+
+  const date = o.timestamp
+    ? new Date(o.timestamp).toLocaleString('en-US', { dateStyle:'long', timeStyle:'short' })
+    : '—';
+
+  document.getElementById('drawer-preview').src       = o.previewImage || '';
+  document.getElementById('drawer-preview').style.display = o.previewImage ? 'block' : 'none';
+  document.getElementById('dr-id').textContent        = o.designId || '—';
+  document.getElementById('dr-date').textContent      = date;
+  document.getElementById('dr-type').textContent      = capFirst(o.orderType || '');
+  document.getElementById('dr-size').textContent      = sizeLabel(o) || '—';
+  document.getElementById('dr-dpi').textContent       = (o.dpi || '—') + (o.dpi ? ' DPI' : '');
+  document.getElementById('dr-qty').textContent       = o.quantity || '—';
+  document.getElementById('dr-finish').textContent    = capFirst(o.finish || '');
+  document.getElementById('dr-cut').textContent       = capFirst((o.cutType||'').replace(/_/g,' '));
+  document.getElementById('dr-ref').textContent       = o.ref || '—';
+  document.getElementById('dr-status-select').value  = o.status || 'sent';
+
+  // Notes
+  const notesSection = document.getElementById('dr-notes-section');
+  if (o.notes) {
+    document.getElementById('dr-notes').textContent = o.notes;
+    notesSection.style.display = 'block';
+  } else {
+    notesSection.style.display = 'none';
+  }
+
+  // URL
+  const urlEl = document.getElementById('dr-url');
+  urlEl.textContent = o.redirectUrl || '—';
+  urlEl.href        = o.redirectUrl || '#';
+
+  document.getElementById('drawer-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeDrawer(e) {
+  if (e && e.target !== document.getElementById('drawer-overlay')) return;
+  document.getElementById('drawer-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+  activeDrawerDesignId = null;
+}
+
+function deleteOrderFromDrawer() {
+  if (!activeDrawerDesignId) return;
+  if (!confirm('Delete this order from the log? This cannot be undone.')) return;
+  allOrders = allOrders.filter(o => o.designId !== activeDrawerDesignId);
+  saveOrders(allOrders);
+  populateSizeFilter();
+  applyFilters();
+  updateStats();
+  closeDrawer(null);
+  adminToast('Order deleted.');
+}
+
+// ---- CSV Export ----
+const CSV_COLS = [
+  ['timestamp',   'Date'],
+  ['designId',    'Design ID'],
+  ['orderType',   'Type'],
+  ['widthInches', 'Width (in)'],
+  ['heightInches','Height (in)'],
+  ['dpi',         'DPI'],
+  ['quantity',    'Quantity'],
+  ['finish',      'Finish'],
+  ['cutType',     'Cut Type'],
+  ['status',      'Status'],
+  ['ref',         'Ref'],
+  ['sourceStore', 'Source Store'],
+  ['notes',       'Notes'],
+  ['redirectUrl', 'Redirect URL'],
+];
+
+function ordersToCSV(orders) {
+  const header = CSV_COLS.map(([,label]) => `"${label}"`).join(',');
+  const rows   = orders.map(o =>
+    CSV_COLS.map(([key]) => {
+      const val = key === 'status' ? (o[key] || 'sent') : (o[key] ?? '');
+      return `"${String(val).replace(/"/g, '""')}"`;
+    }).join(',')
+  );
+  return [header, ...rows].join('\r\n');
+}
+
+function downloadCSV(csv, filename) {
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  adminToast(`Exported ${filename}`);
+}
+
+function exportCSV() {
+  if (allOrders.length === 0) { adminToast('No orders to export.'); return; }
+  downloadCSV(ordersToCSV(allOrders), `threaddrop-orders-all-${dateSlug()}.csv`);
+}
+
+function exportFilteredCSV() {
+  if (filteredOrders.length === 0) { adminToast('No orders match the current filter.'); return; }
+  downloadCSV(ordersToCSV(filteredOrders), `threaddrop-orders-filtered-${dateSlug()}.csv`);
+}
+
+// ---- Confirm clear ----
+function confirmClearAll() {
+  if (allOrders.length === 0) { adminToast('Log is already empty.'); return; }
+  if (!confirm(`Delete all ${allOrders.length} orders from the log? This cannot be undone.`)) return;
+  localStorage.removeItem(ORDER_LOG_KEY);
+  allOrders = [];
+  filteredOrders = [];
+  populateSizeFilter();
+  renderTable();
+  updateStats();
+  adminToast('Order log cleared.');
+}
+
+// ---- Demo seed data ----
+function seedDemoData() {
+  const now = Date.now();
+  const DEMO = [
+    { timestamp: new Date(now - 86400000*5).toISOString(), designId:'sticker-demo-001', orderType:'custom_sticker', previewImage:'', quantity:25,  widthInches:3, heightInches:3, dpi:300, finish:'matte',  cutType:'die_cut', status:'sent',      notes:'Rush order please', ref:'luis_store', sourceStore:'PrintPath', redirectUrl:'https://FRIEND-DOMAIN.com/order-intake?type=custom_sticker' },
+    { timestamp: new Date(now - 86400000*3).toISOString(), designId:'sticker-demo-002', orderType:'custom_sticker', previewImage:'', quantity:50,  widthInches:2, heightInches:2, dpi:300, finish:'gloss',  cutType:'circle',  status:'fulfilled', notes:'',             ref:'luis_store', sourceStore:'PrintPath', redirectUrl:'https://FRIEND-DOMAIN.com/order-intake?type=custom_sticker' },
+    { timestamp: new Date(now - 86400000*1).toISOString(), designId:'sticker-demo-003', orderType:'custom_sticker', previewImage:'', quantity:10,  widthInches:4, heightInches:4, dpi:350, finish:'matte',  cutType:'kiss_cut',status:'sent',      notes:'',             ref:'luis_store', sourceStore:'PrintPath', redirectUrl:'https://FRIEND-DOMAIN.com/order-intake?type=custom_sticker' },
+    { timestamp: new Date(now - 3600000*2 ).toISOString(), designId:'sticker-demo-004', orderType:'custom_sticker', previewImage:'', quantity:100, widthInches:3, heightInches:3, dpi:300, finish:'gloss',  cutType:'square',  status:'cancelled', notes:'Customer changed mind', ref:'luis_store', sourceStore:'PrintPath', redirectUrl:'https://FRIEND-DOMAIN.com/order-intake?type=custom_sticker' },
+    { timestamp: new Date(now - 3600000*1 ).toISOString(), designId:'sticker-demo-005', orderType:'custom_sticker', previewImage:'', quantity:5,   widthInches:2, heightInches:3, dpi:400, finish:'matte',  cutType:'die_cut', status:'sent',      notes:'',             ref:'',           sourceStore:'PrintPath', redirectUrl:'https://FRIEND-DOMAIN.com/order-intake?type=custom_sticker' },
+  ];
+
+  let existing = loadOrders();
+  const existingIds = new Set(existing.map(o => o.designId));
+  const newOnes = DEMO.filter(d => !existingIds.has(d.designId));
+
+  if (newOnes.length === 0) {
+    adminToast('Demo orders already present.');
+    return;
+  }
+
+  saveOrders([...existing, ...newOnes]);
+  refreshOrders();
+  adminToast(`Added ${newOnes.length} demo orders.`);
+}
+
+// ---- Helpers ----
+function capFirst(str) {
+  return (str||'').replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function escAttr(str) {
+  return (str||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function dateSlug() {
+  return new Date().toISOString().slice(0,10);
+}
+
+let toastTimer = null;
+function adminToast(msg) {
+  const el = document.getElementById('admin-toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+function showView(view) {
+  // Placeholder for future multi-view support
+}
+</script>
+</body>
+</html>

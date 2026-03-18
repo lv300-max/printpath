@@ -1,0 +1,26 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from   = "/clean-prompt"
+  to     = "/.netlify/functions/clean-prompt"
+  status = 200
+
+[[redirects]]
+  from   = "/generate-image"
+  to     = "/.netlify/functions/generate-image"
+  status = 200
+
+[[redirects]]
+  from   = "/upscale-image"
+  to     = "/.netlify/functions/upscale-image"
+  status = 200
+
+[[redirects]]
+  from   = "/health"
+  to     = "/.netlify/functions/health"
+  status = 200
