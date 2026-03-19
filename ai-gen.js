@@ -2423,9 +2423,8 @@ function aiUpdatePrice() {
    Features 10, 13, 14
    ==================================================== */
 
-// ← REQUIRED: Replace with your real print shop order URL before going live
-// Example: 'https://yourshop.com/order' or a Printful/Printify webhook endpoint
-const PRINT_SHOP_URL = 'https://yourprintshop.com/order';
+// Print shop partner — blendedprints.com
+const PRINT_SHOP_URL = 'https://blendedprints.com/order';
 
 async function aiSendToPrint() {
   const img = aiGenState.selected;
