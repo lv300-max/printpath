@@ -3,13 +3,15 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<meta name="description" content="PrintPath — AI sticker design and print-on-demand shop dashboard. Generate, order, and track stickers in real time." />
+<meta name="theme-color" content="#08080f" />
 <title>PrintPath — Live Demo</title>
 <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
 <link rel="apple-touch-icon" sizes="192x192" href="favicon-192.png" />
-<!-- Firebase compat SDK -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<!-- Firebase compat SDK (deferred — non-blocking) -->
+<script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
 /* ============================================================
    RESET + BASE
@@ -25,8 +27,8 @@ html, body { overflow-x: hidden; max-width: 100%; }
   --border:   rgba(255,255,255,0.07);
   --border2:  rgba(255,255,255,0.13);
   --text:     #f0f0f8;
-  --text2:    #8888a8;
-  --text3:    #5a5a78;
+  --text2:    #a0a0c0;
+  --text3:    #7a7a9a;
   --green:    #00ff9c;
   --green2:   #00cc7a;
   --gdim:     rgba(0,255,156,0.1);
@@ -80,7 +82,7 @@ html, body {
   display: grid; place-items: center;
 }
 .brand-mark svg { width: 14px; height: 14px; color: #030d09; }
-.brand-name { font-size: 0.9rem; font-weight: 800; letter-spacing: -0.02em; }
+.brand-name { font-size: 0.9rem; font-weight: 800; letter-spacing: -0.02em; margin: 0; }
 .brand-badge {
   font-size: 0.58rem; font-weight: 700; letter-spacing: 0.12em;
   text-transform: uppercase; color: var(--green);
@@ -162,11 +164,6 @@ html, body {
   box-shadow: 0 0 30px rgba(0,255,156,0.15);
 }
 .login-logo img { width: 40px; height: 40px; }
-.login-title {
-  font-size: 1.5rem; font-weight: 800; letter-spacing: -0.03em;
-  margin-bottom: 6px;
-}
-.login-title span { color: var(--green); }
 .login-sub {
   font-size: 0.82rem; color: var(--text2);
   margin-bottom: 32px; line-height: 1.5;
@@ -185,7 +182,7 @@ html, body {
 .btn-google svg { width: 20px; height: 20px; flex-shrink: 0; }
 .btn-google.loading { opacity: 0.7; cursor: not-allowed; pointer-events: none; }
 .login-terms {
-  font-size: 0.62rem; color: var(--text3);
+  font-size: 0.62rem; color: var(--text2);
   margin-top: 14px; line-height: 1.5;
 }
 
@@ -223,7 +220,7 @@ html, body {
 .qr-info { display: flex; flex-direction: column; gap: 3px; }
 .qr-label {
   font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--text3);
+  text-transform: uppercase; color: var(--text2);
 }
 .qr-url {
   font-size: 0.88rem; font-weight: 700; color: var(--green);
@@ -242,7 +239,7 @@ html, body {
   color: var(--green); font-size: 0.82rem; font-weight: 700;
   width: 100%; min-width: 0; font-family: inherit;
 }
-.ip-edit label { font-size: 0.6rem; color: var(--text3); font-weight: 600; white-space: nowrap; }
+.ip-edit label { font-size: 0.6rem; color: var(--text2); font-weight: 600; white-space: nowrap; }
 .btn-apply {
   padding: 5px 11px; border-radius: 7px;
   background: var(--gdim); border: 1px solid rgba(0,255,156,0.25);
@@ -277,7 +274,7 @@ html, body {
 
 .panel-title {
   font-size: 0.6rem; font-weight: 700; letter-spacing: 0.16em;
-  text-transform: uppercase; color: var(--text3);
+  text-transform: uppercase; color: var(--text2);
   margin-bottom: 16px;
 }
 
@@ -297,6 +294,12 @@ html, body {
   margin-bottom: 4px;
 }
 .customer-heading span { color: var(--green); }
+
+.login-title {
+  font-size: 1.5rem; font-weight: 800; letter-spacing: -0.03em;
+  margin-bottom: 6px;
+}
+.login-title span { color: var(--green); }
 
 .customer-sub {
   font-size: 0.78rem; color: var(--text2);
@@ -366,7 +369,7 @@ html, body {
 .opt-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 90px; }
 .opt-label {
   font-size: 0.58rem; font-weight: 700; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--text3);
+  text-transform: uppercase; color: var(--text2);
 }
 .opt-select {
   height: 36px; padding: 0 10px;
@@ -484,7 +487,7 @@ html, body {
 
 .stat-label {
   font-size: 0.56rem; font-weight: 700; letter-spacing: 0.14em;
-  text-transform: uppercase; color: var(--text3); margin-bottom: 3px;
+  text-transform: uppercase; color: var(--text2); margin-bottom: 3px;
 }
 .stat-val {
   font-size: 1.25rem; font-weight: 800; letter-spacing: -0.03em;
@@ -775,7 +778,7 @@ html, body {
       </svg>
     </div>
     <div>
-      <div class="brand-name">PrintPath</div>
+      <h1 class="brand-name">PrintPath</h1>
     </div>
     <span class="brand-badge">Live Demo</span>
   </div>
@@ -787,8 +790,8 @@ html, body {
       <img id="user-avatar-img" class="user-avatar" style="display:none" alt="" />
       <span id="user-name"></span>
     </div>
-    <button class="btn-logout" id="btn-logout" style="display:none" onclick="handleLogout()">Sign out</button>
-    <button class="btn-reset" onclick="resetDemo()">↺ Reset</button>
+    <button class="btn-logout" id="btn-logout" style="display:none" onclick="handleLogout()" aria-label="Sign out">Sign out</button>
+    <button class="btn-reset" onclick="resetDemo()" aria-label="Reset demo">↺ Reset</button>
   </div>
 </header>
 
@@ -816,14 +819,14 @@ html, body {
 <!-- ============================================================
      MAIN GRID
 ============================================================ -->
-<div class="grid">
+<div class="grid" role="main">
 
   <!-- LEFT — CUSTOMER VIEW -->
   <div class="panel" id="panel-customer">
     <div class="panel-title">Customer — Sticker AI</div>
 
     <div class="customer-hero">
-      <div class="customer-heading">Design your <span>sticker</span></div>
+      <h2 class="customer-heading">Design your <span>sticker</span></h2>
       <div class="customer-sub">Describe it. We generate it. You print it.</div>
 
       <div class="input-wrap">
@@ -941,7 +944,7 @@ html, body {
   <div class="modal">
     <div class="modal-header">
       <div class="modal-title">Forward Order</div>
-      <button class="modal-close" onclick="closeModalDirect()">✕</button>
+      <button class="modal-close" onclick="closeModalDirect()" aria-label="Close modal">✕</button>
     </div>
     <div class="modal-body">
       <div class="shop-option" onclick="doForward()">
@@ -987,7 +990,7 @@ html, body {
     <div class="login-logo">
       <img src="/favicon-192.png" alt="PrintPath" />
     </div>
-    <div class="login-title">Print<span>Path</span></div>
+    <h2 class="login-title">Print<span>Path</span></h2>
     <div class="login-sub">Sign in to manage your sticker orders,<br>track earnings, and send designs to print.</div>
     <button class="btn-google" id="btn-google-signin" onclick="handleGoogleSignIn()">
       <!-- Google G logo -->
