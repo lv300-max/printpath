@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PrintPath — Shop Network</title>
+<style>
+/* ====== TOKENS (matches admin.html exactly) ====== */
+:root {
+  --primary:     #00e5a0;
+  --primary-dim: rgba(0,229,160,0.10);
+  --success:     #059669;
+  --danger:      #dc2626;
+  --warn:        #d97706;
+  --info:        #2563eb;
+  --bg:          #07070d;
+  --surface:     #0e0e18;
+  --surface2:    #13131e;
+  --border:      #1a1a2e;
+  --text:        #e2e8f0;
+  --text-muted:  #64748b;
+  --radius:      12px;
+  --shadow-lg:   0 8px 32px rgba(0,0,0,0.6);
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  grid-template-rows: auto 1fr;
+}
+
+/* ====== TOPBAR ====== */
+.topbar {
+  grid-column: 1/-1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 24px;
+  height: 56px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.topbar-brand {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--primary);
+  letter-spacing: -0.3px;
+}
+.topbar-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.topbar-spacer { flex: 1; }
+.topbar-back {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-decoration: none;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: color .15s, border-color .15s;
+}
+.topbar-back:hover { color: var(--primary); border-color: var(--primary); }
+
+/* ====== SIDEBAR ====== */
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sidebar-section {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 12px 8px 6px;
+}
+.sidebar-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  transition: background .15s, color .15s;
+}
+.sidebar-btn:hover  { background: var(--surface2); color: var(--text); }
+.sidebar-btn.active { background: var(--primary-dim); color: var(--primary); font-weight: 600; }
+.sidebar-btn svg { width:15px; height:15px; flex-shrink:0; }
+.sidebar-divider { height:1px; background:var(--border); margin:8px 0; }
+
+/* ====== MAIN ====== */
+.main {
+  padding: 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ====== SECTION HEADER ====== */
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+.section-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.section-spacer { flex: 1; }
+.btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity .15s, transform .1s;
+}
+.btn:hover { opacity: .85; transform: translateY(-1px); }
+.btn:active { transform: none; }
+.btn-primary { background: var(--primary); color: #000; }
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+.btn-sm { padding: 5px 11px; font-size: 12px; }
+
+/* ====== STATS BAR ====== */
+.stats-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
+}
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+.stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 6px;
+}
+.stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+}
+.stat-value.green  { color: var(--primary); }
+.stat-value.yellow { color: var(--warn); }
+.stat-value.red    { color: var(--danger); }
+
+/* ====== SHOP CARDS GRID ====== */
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+.shop-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: border-color .2s;
+}
+.shop-card:hover { border-color: rgba(0,229,160,0.3); }
+.shop-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.shop-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.shop-address { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+/* status badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.status-badge::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.badge-available { color: var(--primary);    background: rgba(0,229,160,0.10); }
+.badge-busy      { color: var(--warn);       background: rgba(217,119,6,0.12); }
+.badge-offline   { color: var(--danger);     background: rgba(220,38,38,0.10); }
+.badge-paused    { color: var(--text-muted); background: rgba(100,116,139,0.12); }
+.badge-new           { color: #a78bfa; background: rgba(167,139,250,0.10); }
+.badge-assigned      { color: var(--info);    background: rgba(37,99,235,0.10); }
+.badge-accepted      { color: var(--primary); background: rgba(0,229,160,0.10); }
+.badge-forwarded     { color: var(--warn);    background: rgba(217,119,6,0.12); }
+.badge-in_production { color: #38bdf8;        background: rgba(56,189,248,0.10); }
+.badge-completed     { color: var(--success); background: rgba(5,150,105,0.10); }
+.badge-cancelled     { color: var(--danger);  background: rgba(220,38,38,0.10); }
+
+/* load bar */
+.load-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+  gap: 8px;
+}
+.load-bar-wrap {
+  flex: 1;
+  height: 5px;
+  background: var(--border);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.load-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: var(--primary);
+  transition: width .4s ease;
+}
+.load-bar-fill.warn  { background: var(--warn); }
+.load-bar-fill.full  { background: var(--danger); }
+
+/* shop meta */
+.shop-meta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.shop-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.shop-meta-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; }
+.shop-meta-value { font-size: 13px; font-weight: 600; color: var(--text); }
+
+.shop-products {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.product-chip {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
+.shop-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* ====== ORDERS TABLE ====== */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.card-title { font-size: 14px; font-weight: 700; }
+
+.table-wrap { overflow-x: auto; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+th {
+  text-align: left;
+  padding: 10px 16px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+  white-space: nowrap;
+}
+td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--surface2); }
+
+.order-id    { font-family: monospace; font-size: 12px; color: var(--text-muted); }
+.order-prompt{
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shop-pill {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--primary-dim);
+  color: var(--primary);
+  white-space: nowrap;
+}
+.shop-pill.forwarded {
+  background: rgba(217,119,6,0.12);
+  color: var(--warn);
+}
+.shop-pill.unassigned {
+  background: rgba(100,116,139,0.12);
+  color: var(--text-muted);
+}
+
+.row-actions { display: flex; gap: 6px; align-items: center; }
+.btn-accept  { background: var(--primary); color: #000; }
+.btn-forward { background: rgba(217,119,6,0.12); color: var(--warn); border: 1px solid rgba(217,119,6,0.3); }
+.btn-decline { background: rgba(220,38,38,0.10); color: var(--danger); border: 1px solid rgba(220,38,38,0.25); }
+.btn-accept,.btn-forward,.btn-decline {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity .15s;
+  white-space: nowrap;
+}
+.btn-accept:hover,.btn-forward:hover,.btn-decline:hover { opacity: .75; }
+
+.empty-row td {
+  text-align: center;
+  padding: 32px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* ====== FORWARD MODAL ====== */
+.modal-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+}
+.modal-backdrop.open { display: flex; }
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: min(480px, 95vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: var(--shadow-lg);
+}
+.modal-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+.modal-subtitle { font-size: 12px; color: var(--text-muted); }
+.modal-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 8px;
+}
+.forward-shops { display: flex; flex-direction: column; gap: 8px; }
+.forward-shop-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.forward-shop-option:hover { border-color: rgba(0,229,160,0.35); background: var(--surface2); }
+.forward-shop-option.selected { border-color: var(--primary); background: var(--primary-dim); }
+.fso-info { flex: 1; }
+.fso-name  { font-size: 13px; font-weight: 600; }
+.fso-meta  { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.fso-load  { font-size: 11px; white-space: nowrap; }
+.fso-load.ok   { color: var(--primary); }
+.fso-load.busy { color: var(--warn); }
+
+.modal-note-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  display: block;
+}
+.modal-textarea {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  padding: 10px 12px;
+  resize: vertical;
+  min-height: 72px;
+  font-family: inherit;
+  transition: border-color .15s;
+}
+.modal-textarea:focus { outline: none; border-color: var(--primary); }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+/* ====== AUDIT DRAWER ====== */
+.drawer-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(0,0,0,0.6);
+}
+.drawer-backdrop.open { display: block; }
+.drawer {
+  position: fixed;
+  top: 0; right: 0;
+  width: min(440px, 100vw);
+  height: 100vh;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  z-index: 301;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-lg);
+  transform: translateX(100%);
+  transition: transform .25s ease;
+}
+.drawer-backdrop.open .drawer { transform: none; }
+.drawer-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+}
+.drawer-title { font-size: 15px; font-weight: 700; flex: 1; }
+.drawer-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  line-height: 0;
+}
+.drawer-close:hover { color: var(--text); background: var(--surface2); }
+.drawer-body { flex: 1; overflow-y: auto; padding: 20px; }
+.drawer-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.drawer-meta-item .meta-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; }
+.drawer-meta-item .meta-value { font-size: 14px; font-weight: 600; margin-top: 3px; }
+
+.timeline { display: flex; flex-direction: column; position: relative; }
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 15px; top: 24px; bottom: 24px;
+  width: 2px;
+  background: var(--border);
+}
+.timeline-event {
+  display: flex;
+  gap: 14px;
+  position: relative;
+  padding-bottom: 20px;
+}
+.timeline-event:last-child { padding-bottom: 0; }
+.te-dot {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--surface2);
+  border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  font-size: 13px;
+  z-index: 1;
+}
+.te-body { flex: 1; padding-top: 5px; }
+.te-event { font-size: 13px; font-weight: 600; text-transform: capitalize; }
+.te-note  { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.te-time  { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+.te-dot.assigned      { border-color: var(--info);    color: var(--info); }
+.te-dot.accepted      { border-color: var(--primary); color: var(--primary); }
+.te-dot.forwarded     { border-color: var(--warn);    color: var(--warn); }
+.te-dot.production_started { border-color: #38bdf8;   color: #38bdf8; }
+.te-dot.completed     { border-color: var(--success); color: var(--success); }
+.te-dot.cancelled     { border-color: var(--danger);  color: var(--danger); }
+.te-dot.new           { border-color: #a78bfa;        color: #a78bfa; }
+
+/* ====== ADD SHOP MODAL ====== */
+.form-row { display: flex; flex-direction: column; gap: 5px; }
+.form-label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+.form-input, .form-select {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  padding: 9px 12px;
+  width: 100%;
+  font-family: inherit;
+  transition: border-color .15s;
+}
+.form-input:focus, .form-select:focus { outline: none; border-color: var(--primary); }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.form-chip {
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  text-transform: capitalize;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.form-chip.on {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-dim);
+}
+
+/* ====== TOAST ====== */
+#net-toast {
+  position: fixed;
+  bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+  box-shadow: var(--shadow-lg);
+  transition: transform .3s ease;
+  z-index: 999;
+  pointer-events: none;
+  white-space: nowrap;
+}
+#net-toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ====== VIEW PANELS ====== */
+.view-panel { display: none; flex-direction: column; gap: 24px; }
+.view-panel.active { display: flex; }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <span class="topbar-brand">PrintPath</span>
+  <span class="topbar-sub">Shop Network</span>
+  <div class="topbar-spacer"></div>
+  <a href="admin.html" class="topbar-back">← Back to Orders</a>
+</header>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-section">Network</div>
+  <button class="sidebar-btn active" onclick="showNetView('shops')">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="4" r="2"/><circle cx="20" cy="18" r="2"/><circle cx="4" cy="18" r="2"/><path d="M12 6v3M10.5 16.5 5.5 17M13.5 16.5l5-1"/></svg>
+    Shops
+  </button>
+  <button class="sidebar-btn" onclick="showNetView('orders')">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
+    Orders
+  </button>
+  <div class="sidebar-divider"></div>
+  <div class="sidebar-section">Actions</div>
+  <button class="sidebar-btn" onclick="openAddShopModal()">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+    Add Shop
+  </button>
+  <button class="sidebar-btn" onclick="netSeedAndRefresh()">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+    Load Demo Data
+  </button>
+  <button class="sidebar-btn" onclick="netClearAll()">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+    Clear All Data
+  </button>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- SHOPS VIEW -->
+  <div id="view-shops" class="view-panel active">
+    <div class="section-header">
+      <div>
+        <div class="section-title">Shop Network</div>
+        <div class="section-subtitle">Manage partner print shops and their capacity</div>
+      </div>
+      <div class="section-spacer"></div>
+      <button class="btn btn-primary btn-sm" onclick="openAddShopModal()">+ Add Shop</button>
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="stats-bar" id="net-stats"></div>
+
+    <!-- Shop Cards -->
+    <div class="shop-grid" id="shop-grid">
+      <div style="color:var(--text-muted);font-size:13px;padding:24px 0">
+        No shops yet — click "Load Demo Data" to get started.
+      </div>
+    </div>
+  </div>
+
+  <!-- ORDERS VIEW -->
+  <div id="view-orders" class="view-panel">
+    <div class="section-header">
+      <div>
+        <div class="section-title">Network Orders</div>
+        <div class="section-subtitle">All orders across the shop network</div>
+      </div>
+      <div class="section-spacer"></div>
+      <select id="order-filter-status" class="form-select" style="width:auto;font-size:12px;padding:6px 10px;" onchange="renderOrdersTable()">
+        <option value="">All Statuses</option>
+        <option value="new">New</option>
+        <option value="assigned">Assigned</option>
+        <option value="accepted">Accepted</option>
+        <option value="forwarded">Forwarded</option>
+        <option value="in_production">In Production</option>
+        <option value="completed">Completed</option>
+        <option value="cancelled">Cancelled</option>
+      </select>
+    </div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Prompt</th>
+              <th>Type</th>
+              <th>Qty</th>
+              <th>Status</th>
+              <th>Shop</th>
+              <th>Payout</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="orders-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</main><!-- /main -->
+
+<!-- ===== FORWARD MODAL ===== -->
+<div class="modal-backdrop" id="forward-modal">
+  <div class="modal">
+    <div>
+      <div class="modal-title">Forward Order</div>
+      <div class="modal-subtitle" id="forward-order-desc">Select a shop to forward this order to</div>
+    </div>
+    <div>
+      <div class="modal-section-label">Compatible Shops</div>
+      <div class="forward-shops" id="forward-shop-list"></div>
+    </div>
+    <div>
+      <label class="modal-note-label" for="forward-note">Note (optional)</label>
+      <textarea id="forward-note" class="modal-textarea" placeholder="e.g. At capacity today, please take this one"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline btn-sm" onclick="closeForwardModal()">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="confirmForward()">Confirm Forward</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== AUDIT DRAWER ===== -->
+<div class="drawer-backdrop" id="audit-drawer-backdrop" onclick="closeAuditDrawer(event)">
+  <div class="drawer" id="audit-drawer">
+    <div class="drawer-header">
+      <div class="drawer-title">Order Timeline</div>
+      <button class="drawer-close" onclick="closeAuditDrawer()">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="drawer-body" id="audit-drawer-body"></div>
+  </div>
+</div>
+
+<!-- ===== ADD / EDIT SHOP MODAL ===== -->
+<div class="modal-backdrop" id="shop-modal">
+  <div class="modal">
+    <div class="modal-title" id="shop-modal-title">Add Shop</div>
+    <div class="form-grid">
+      <div class="form-row" style="grid-column:1/-1">
+        <label class="form-label">Shop Name *</label>
+        <input id="sm-name" class="form-input" type="text" placeholder="e.g. Blended Prints">
+      </div>
+      <div class="form-row">
+        <label class="form-label">Email</label>
+        <input id="sm-email" class="form-input" type="email" placeholder="orders@shop.com">
+      </div>
+      <div class="form-row">
+        <label class="form-label">Phone</label>
+        <input id="sm-phone" class="form-input" type="text" placeholder="(555) 000-0000">
+      </div>
+      <div class="form-row" style="grid-column:1/-1">
+        <label class="form-label">Address / City</label>
+        <input id="sm-address" class="form-input" type="text" placeholder="Columbus, OH">
+      </div>
+      <div class="form-row">
+        <label class="form-label">Capacity / Day</label>
+        <input id="sm-capacity" class="form-input" type="number" min="1" value="20">
+      </div>
+      <div class="form-row">
+        <label class="form-label">Avg Turnaround (days)</label>
+        <input id="sm-turnaround" class="form-input" type="number" min="1" value="3">
+      </div>
+      <div class="form-row">
+        <label class="form-label">Quality Score (0-100)</label>
+        <input id="sm-quality" class="form-input" type="number" min="0" max="100" value="85">
+      </div>
+      <div class="form-row">
+        <label class="form-label">Status</label>
+        <select id="sm-status" class="form-select">
+          <option value="available">Available</option>
+          <option value="busy">Busy</option>
+          <option value="paused">Paused</option>
+          <option value="offline">Offline</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Supported Products</label>
+      <div class="form-chips" id="sm-products">
+        <button class="form-chip on" data-product="shirt"   onclick="toggleChip(this)">shirt</button>
+        <button class="form-chip on" data-product="sticker" onclick="toggleChip(this)">sticker</button>
+        <button class="form-chip"   data-product="hoodie"   onclick="toggleChip(this)">hoodie</button>
+        <button class="form-chip"   data-product="hat"      onclick="toggleChip(this)">hat</button>
+        <button class="form-chip"   data-product="poster"   onclick="toggleChip(this)">poster</button>
+      </div>
+    </div>
+    <input type="hidden" id="sm-shop-id">
+    <div class="modal-actions">
+      <button class="btn btn-outline btn-sm" onclick="closeShopModal()">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="saveShopFromModal()">Save Shop</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="net-toast"></div>
+
+<!-- DATA LAYER -->
+<script src="pp-network.js"></script>
+
+<script>
+/* ============================================================
+   NETWORK ADMIN — UI CONTROLLER
+   ============================================================ */
+
+let _forwardContext = null; // { orderId, fromShopId }
+let _selectedForwardShopId = null;
+let _editingShopId = null;
+
+/* ====================================================
+   VIEW ROUTING
+   ==================================================== */
+function showNetView(view) {
+  document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + view).classList.add('active');
+  const btns = document.querySelectorAll('.sidebar-btn');
+  btns.forEach(b => {
+    if (b.textContent.trim().toLowerCase().startsWith(view === 'shops' ? 'shop' : 'order')) {
+      b.classList.add('active');
+    }
+  });
+  if (view === 'shops')  renderShops();
+  if (view === 'orders') renderOrdersTable();
+}
+
+/* ====================================================
+   STATS BAR
+   ==================================================== */
+function renderStats() {
+  const shops  = PrintPathNetwork.refreshAllShopStatuses();
+  const orders = PrintPathNetwork.loadOrders();
+  const today  = new Date().toDateString();
+
+  const available   = shops.filter(s => s.status === 'available').length;
+  const busy        = shops.filter(s => s.status === 'busy').length;
+  const forwarded   = orders.filter(o => o.status === 'forwarded').length;
+  const completedToday = orders.filter(o =>
+    o.status === 'completed' && new Date(o.updatedAt).toDateString() === today
+  ).length;
+
+  const el = document.getElementById('net-stats');
+  el.innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">Total Shops</div>
+      <div class="stat-value">${shops.length}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Available</div>
+      <div class="stat-value green">${available}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Busy</div>
+      <div class="stat-value yellow">${busy}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Forwarded</div>
+      <div class="stat-value">${forwarded}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Completed Today</div>
+      <div class="stat-value green">${completedToday}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Orders</div>
+      <div class="stat-value">${orders.length}</div>
+    </div>
+  `;
+}
+
+/* ====================================================
+   SHOP CARDS
+   ==================================================== */
+function renderShops() {
+  renderStats();
+  const shops = PrintPathNetwork.refreshAllShopStatuses();
+  const grid  = document.getElementById('shop-grid');
+
+  if (!shops.length) {
+    grid.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:24px 0">No shops yet — click "Load Demo Data" to get started.</div>';
+    return;
+  }
+
+  grid.innerHTML = shops.map(shop => {
+    const pct  = Math.min(100, Math.round((shop.currentLoad / shop.capacityPerDay) * 100));
+    const fillCls = pct >= 100 ? 'full' : pct >= 75 ? 'warn' : '';
+    const statusCls = `badge-${shop.status}`;
+    const products = (shop.supportedProducts || []).map(p =>
+      `<span class="product-chip">${p}</span>`
+    ).join('');
+
+    return `
+    <div class="shop-card">
+      <div class="shop-card-top">
+        <div>
+          <div class="shop-name">${esc(shop.name)}</div>
+          <div class="shop-address">${esc(shop.address)}</div>
+        </div>
+        <span class="status-badge ${statusCls}">${shop.status}</span>
+      </div>
+      <div class="load-row">
+        <span>Load</span>
+        <div class="load-bar-wrap"><div class="load-bar-fill ${fillCls}" style="width:${pct}%"></div></div>
+        <span>${shop.currentLoad}/${shop.capacityPerDay}</span>
+      </div>
+      <div class="shop-meta">
+        <div class="shop-meta-item">
+          <span class="shop-meta-label">Turnaround</span>
+          <span class="shop-meta-value">${shop.averageTurnaroundDays}d</span>
+        </div>
+        <div class="shop-meta-item">
+          <span class="shop-meta-label">Quality</span>
+          <span class="shop-meta-value">${shop.qualityScore}/100</span>
+        </div>
+        <div class="shop-meta-item">
+          <span class="shop-meta-label">Email</span>
+          <span class="shop-meta-value" style="font-size:11px">${esc(shop.email) || '—'}</span>
+        </div>
+      </div>
+      <div class="shop-products">${products}</div>
+      <div class="shop-actions">
+        <button class="btn btn-outline btn-sm" onclick="editShop('${shop.shopId}')">Edit</button>
+        <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:rgba(220,38,38,0.3)"
+          onclick="confirmDeleteShop('${shop.shopId}','${esc(shop.name)}')">Remove</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ====================================================
+   ORDERS TABLE
+   ==================================================== */
+function renderOrdersTable() {
+  renderStats();
+  const filterStatus = document.getElementById('order-filter-status').value;
+  const shops  = PrintPathNetwork.loadShops();
+  let   orders = PrintPathNetwork.loadOrders();
+
+  if (filterStatus) orders = orders.filter(o => o.status === filterStatus);
+  orders = orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  const tbody = document.getElementById('orders-tbody');
+  if (!orders.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="9">No orders found</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = orders.map(order => {
+    const shop      = shops.find(s => s.shopId === order.assignedShopId);
+    const shopLabel = shop
+      ? `<span class="shop-pill ${order.status === 'forwarded' ? 'forwarded' : ''}">${esc(shop.name)}</span>`
+      : `<span class="shop-pill unassigned">Unassigned</span>`;
+
+    const actions = buildRowActions(order);
+    const created = new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+    return `
+    <tr>
+      <td class="order-id">${order.orderId}</td>
+      <td class="order-prompt" title="${esc(order.prompt)}">${esc(order.prompt) || '—'}</td>
+      <td style="text-transform:capitalize">${esc(order.productType)}</td>
+      <td>${order.qty}</td>
+      <td><span class="status-badge badge-${order.status}">${order.status.replace('_',' ')}</span></td>
+      <td>${shopLabel}</td>
+      <td>$${(order.productionPayout || 0).toFixed(2)}</td>
+      <td style="color:var(--text-muted)">${created}</td>
+      <td><div class="row-actions">${actions}</div></td>
+    </tr>`;
+  }).join('');
+}
+
+function buildRowActions(order) {
+  const s = order.status;
+  let html = '';
+
+  if (s === 'new' || s === 'assigned') {
+    html += `<button class="btn-accept" onclick="adminAccept('${order.orderId}')">Accept</button>`;
+    html += `<button class="btn-forward" onclick="openForwardModal('${order.orderId}')">Forward</button>`;
+    html += `<button class="btn-decline" onclick="adminDecline('${order.orderId}')">Decline</button>`;
+  } else if (s === 'accepted' || s === 'forwarded') {
+    html += `<button class="btn-accept" style="background:rgba(56,189,248,0.12);color:#38bdf8;"
+               onclick="adminStartProduction('${order.orderId}')">Start Prod.</button>`;
+    html += `<button class="btn-forward" onclick="openForwardModal('${order.orderId}')">Forward</button>`;
+  } else if (s === 'in_production') {
+    html += `<button class="btn-accept" onclick="adminComplete('${order.orderId}')">Complete</button>`;
+  }
+
+  html += `<button class="btn btn-outline btn-sm" onclick="openAuditDrawer('${order.orderId}')">Trail</button>`;
+  return html;
+}
+
+/* ====================================================
+   ADMIN ORDER ACTIONS
+   ==================================================== */
+function adminAccept(orderId) {
+  const orders = PrintPathNetwork.loadOrders();
+  const order  = orders.find(o => o.orderId === orderId);
+  if (!order) return;
+  // If unassigned, auto-assign first
+  if (!order.assignedShopId) {
+    const { shop } = PrintPathNetwork.assignOrder(order);
+    if (!shop) { netToast('No available shops right now'); return; }
+  }
+  const updated = PrintPathNetwork.acceptOrder(orderId, order.assignedShopId || '');
+  if (updated) { netToast('Order accepted ✓'); renderOrdersTable(); }
+}
+
+function adminDecline(orderId) {
+  if (!confirm('Decline and cancel this order?')) return;
+  const orders = PrintPathNetwork.loadOrders();
+  const order  = orders.find(o => o.orderId === orderId);
+  if (!order) return;
+  PrintPathNetwork.declineOrder(orderId, order.assignedShopId || '', 'Admin declined');
+  netToast('Order cancelled');
+  renderOrdersTable();
+}
+
+function adminStartProduction(orderId) {
+  const orders = PrintPathNetwork.loadOrders();
+  const order  = orders.find(o => o.orderId === orderId);
+  if (!order) return;
+  PrintPathNetwork.startProduction(orderId, order.assignedShopId || '');
+  netToast('Production started 🏭');
+  renderOrdersTable();
+}
+
+function adminComplete(orderId) {
+  const orders = PrintPathNetwork.loadOrders();
+  const order  = orders.find(o => o.orderId === orderId);
+  if (!order) return;
+  PrintPathNetwork.completeOrder(orderId, order.assignedShopId || order.finalPrinterShopId || '');
+  netToast('Order completed ✓');
+  renderOrdersTable();
+}
+
+/* ====================================================
+   FORWARD MODAL
+   ==================================================== */
+function openForwardModal(orderId) {
+  const orders = PrintPathNetwork.loadOrders();
+  const order  = orders.find(o => o.orderId === orderId);
+  if (!order) return;
+
+  _forwardContext = { orderId, fromShopId: order.assignedShopId || '' };
+  _selectedForwardShopId = null;
+
+  document.getElementById('forward-order-desc').textContent =
+    `Order ${orderId} · ${order.qty} × ${order.productType}`;
+  document.getElementById('forward-note').value = '';
+
+  // Build compatible shop list (not offline/paused, supports product)
+  const shops = PrintPathNetwork.refreshAllShopStatuses().filter(s => {
+    if (s.status === 'offline' || s.status === 'paused') return false;
+    if (s.shopId === order.assignedShopId) return false; // can't forward to same shop
+    return (s.supportedProducts || []).includes(order.productType);
+  });
+
+  const list = document.getElementById('forward-shop-list');
+  if (!shops.length) {
+    list.innerHTML = '<div style="color:var(--text-muted);font-size:13px">No compatible shops available right now.</div>';
+  } else {
+    list.innerHTML = shops.map(s => {
+      const pct = Math.min(100, Math.round((s.currentLoad / s.capacityPerDay) * 100));
+      return `
+      <div class="forward-shop-option" data-shopid="${s.shopId}" onclick="selectForwardShop(this, '${s.shopId}')">
+        <div class="fso-info">
+          <div class="fso-name">${esc(s.name)}</div>
+          <div class="fso-meta">${esc(s.address)} · ${s.averageTurnaroundDays}d turnaround</div>
+        </div>
+        <div class="fso-load ${pct >= 80 ? 'busy' : 'ok'}">${pct}% load</div>
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('forward-modal').classList.add('open');
+}
+
+function selectForwardShop(el, shopId) {
+  document.querySelectorAll('.forward-shop-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  _selectedForwardShopId = shopId;
+}
+
+function closeForwardModal() {
+  document.getElementById('forward-modal').classList.remove('open');
+  _forwardContext = null;
+  _selectedForwardShopId = null;
+}
+
+function confirmForward() {
+  if (!_selectedForwardShopId) { netToast('Select a shop first'); return; }
+  if (!_forwardContext) return;
+  const note = document.getElementById('forward-note').value.trim();
+  PrintPathNetwork.forwardOrder(
+    _forwardContext.orderId,
+    _forwardContext.fromShopId,
+    _selectedForwardShopId,
+    note
+  );
+  closeForwardModal();
+  netToast('Order forwarded ✓');
+  renderOrdersTable();
+  renderShops();
+}
+
+/* ====================================================
+   AUDIT TRAIL DRAWER
+   ==================================================== */
+function openAuditDrawer(orderId) {
+  const orders = PrintPathNetwork.loadOrders();
+  const shops  = PrintPathNetwork.loadShops();
+  const order  = orders.find(o => o.orderId === orderId);
+  if (!order) return;
+
+  const shop = shops.find(s => s.shopId === order.assignedShopId);
+
+  const ICONS = {
+    assigned:           '📋',
+    accepted:           '✅',
+    forwarded:          '↗️',
+    production_started: '🏭',
+    completed:          '📦',
+    cancelled:          '❌',
+    new:                '🆕',
+  };
+
+  const timeline = (order.timeline || []).map(ev => `
+    <div class="timeline-event">
+      <div class="te-dot ${ev.event}">${ICONS[ev.event] || '•'}</div>
+      <div class="te-body">
+        <div class="te-event">${ev.event.replace(/_/g, ' ')}</div>
+        <div class="te-note">${esc(ev.note)}</div>
+        <div class="te-time">${new Date(ev.timestamp).toLocaleString()}</div>
+      </div>
+    </div>`).join('');
+
+  document.getElementById('audit-drawer-body').innerHTML = `
+    <div class="drawer-meta">
+      <div class="drawer-meta-item">
+        <div class="meta-label">Order</div>
+        <div class="meta-value" style="font-size:12px;font-family:monospace">${order.orderId}</div>
+      </div>
+      <div class="drawer-meta-item">
+        <div class="meta-label">Status</div>
+        <div class="meta-value"><span class="status-badge badge-${order.status}">${order.status.replace('_',' ')}</span></div>
+      </div>
+      <div class="drawer-meta-item">
+        <div class="meta-label">Shop</div>
+        <div class="meta-value">${shop ? esc(shop.name) : 'Unassigned'}</div>
+      </div>
+      <div class="drawer-meta-item">
+        <div class="meta-label">Payout</div>
+        <div class="meta-value">$${(order.productionPayout || 0).toFixed(2)}</div>
+      </div>
+      <div class="drawer-meta-item">
+        <div class="meta-label">Qty / Type</div>
+        <div class="meta-value">${order.qty} × ${order.productType}</div>
+      </div>
+      <div class="drawer-meta-item">
+        <div class="meta-label">Customer Status</div>
+        <div class="meta-value" style="color:var(--primary)">${PrintPathNetwork.customerStatus(order.status)}</div>
+      </div>
+    </div>
+    <div class="modal-section-label" style="margin-bottom:12px">Timeline</div>
+    <div class="timeline">${timeline || '<div style="color:var(--text-muted);font-size:13px">No events yet</div>'}</div>
+  `;
+
+  document.getElementById('audit-drawer-backdrop').classList.add('open');
+}
+
+function closeAuditDrawer(e) {
+  if (e && e.target !== document.getElementById('audit-drawer-backdrop')) return;
+  document.getElementById('audit-drawer-backdrop').classList.remove('open');
+}
+
+/* ====================================================
+   ADD / EDIT SHOP MODAL
+   ==================================================== */
+function openAddShopModal() {
+  _editingShopId = null;
+  document.getElementById('shop-modal-title').textContent = 'Add Shop';
+  document.getElementById('sm-shop-id').value    = '';
+  document.getElementById('sm-name').value       = '';
+  document.getElementById('sm-email').value      = '';
+  document.getElementById('sm-phone').value      = '';
+  document.getElementById('sm-address').value    = '';
+  document.getElementById('sm-capacity').value   = 20;
+  document.getElementById('sm-turnaround').value = 3;
+  document.getElementById('sm-quality').value    = 85;
+  document.getElementById('sm-status').value     = 'available';
+  document.querySelectorAll('#sm-products .form-chip').forEach(c => {
+    c.classList.toggle('on', ['shirt','sticker'].includes(c.dataset.product));
+  });
+  document.getElementById('shop-modal').classList.add('open');
+}
+
+function editShop(shopId) {
+  const shop = PrintPathNetwork.loadShops().find(s => s.shopId === shopId);
+  if (!shop) return;
+  _editingShopId = shopId;
+  document.getElementById('shop-modal-title').textContent = 'Edit Shop';
+  document.getElementById('sm-shop-id').value    = shop.shopId;
+  document.getElementById('sm-name').value       = shop.name;
+  document.getElementById('sm-email').value      = shop.email || '';
+  document.getElementById('sm-phone').value      = shop.phone || '';
+  document.getElementById('sm-address').value    = shop.address || '';
+  document.getElementById('sm-capacity').value   = shop.capacityPerDay;
+  document.getElementById('sm-turnaround').value = shop.averageTurnaroundDays;
+  document.getElementById('sm-quality').value    = shop.qualityScore;
+  document.getElementById('sm-status').value     = shop.status;
+  document.querySelectorAll('#sm-products .form-chip').forEach(c => {
+    c.classList.toggle('on', (shop.supportedProducts || []).includes(c.dataset.product));
+  });
+  document.getElementById('shop-modal').classList.add('open');
+}
+
+function closeShopModal() {
+  document.getElementById('shop-modal').classList.remove('open');
+}
+
+function toggleChip(el) {
+  el.classList.toggle('on');
+}
+
+function saveShopFromModal() {
+  const name = document.getElementById('sm-name').value.trim();
+  if (!name) { netToast('Shop name is required'); return; }
+
+  const products = [...document.querySelectorAll('#sm-products .form-chip.on')]
+    .map(c => c.dataset.product);
+
+  const shopData = PrintPathNetwork.createShop({
+    shopId:                _editingShopId || PrintPathNetwork.uid(),
+    name,
+    email:                 document.getElementById('sm-email').value.trim(),
+    phone:                 document.getElementById('sm-phone').value.trim(),
+    address:               document.getElementById('sm-address').value.trim(),
+    capacityPerDay:        parseInt(document.getElementById('sm-capacity').value)  || 20,
+    averageTurnaroundDays: parseInt(document.getElementById('sm-turnaround').value) || 3,
+    qualityScore:          parseInt(document.getElementById('sm-quality').value)   || 85,
+    status:                document.getElementById('sm-status').value,
+    supportedProducts:     products,
+    currentLoad:           0,
+  });
+
+  if (_editingShopId) {
+    const existing = PrintPathNetwork.loadShops().find(s => s.shopId === _editingShopId);
+    if (existing) shopData.currentLoad = existing.currentLoad;
+  }
+
+  PrintPathNetwork.saveShop(shopData);
+  closeShopModal();
+  netToast(_editingShopId ? 'Shop updated ✓' : 'Shop added ✓');
+  renderShops();
+}
+
+/* ====================================================
+   DELETE SHOP
+   ==================================================== */
+function confirmDeleteShop(shopId, shopName) {
+  if (!confirm(`Remove "${shopName}" from the network? This cannot be undone.`)) return;
+  PrintPathNetwork.deleteShop(shopId);
+  netToast('Shop removed');
+  renderShops();
+}
+
+/* ====================================================
+   SEED / CLEAR
+   ==================================================== */
+function netSeedAndRefresh() {
+  PrintPathNetwork.seedDemo();
+  netToast('Demo data loaded ✓');
+  renderShops();
+}
+
+function netClearAll() {
+  if (!confirm('Clear ALL shop and order data? This cannot be undone.')) return;
+  localStorage.removeItem('pp-network-shops');
+  localStorage.removeItem('pp-network-orders');
+  netToast('All network data cleared');
+  renderShops();
+  renderOrdersTable();
+}
+
+/* ====================================================
+   TOAST
+   ==================================================== */
+let _toastTimer = null;
+function netToast(msg) {
+  const el = document.getElementById('net-toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+/* ====================================================
+   UTILS
+   ==================================================== */
+function esc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ====================================================
+   INIT
+   ==================================================== */
+renderShops();
+</script>
+</body>
+</html>
