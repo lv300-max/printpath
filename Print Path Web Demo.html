@@ -9,6 +9,7 @@
 <!-- Firebase compat SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
 /* ============================================================
    RESET + BASE
@@ -1306,25 +1307,19 @@ async function sendOrder() {
 ============================================================ */
 async function acceptOrder(id) {
   try {
-    await apiFetch('/update', { id, update: { status: 'printing' } });
     const order = appState.orders.find(o => o.id === id);
-    if (order) {
-      appState.earned += order.payout;
-      showMoneyPop(id, order.payout);
-    }
+    await updateOrder(id, { status: 'printing' });
+    if (order) showMoneyPop(id, order.payout);
     pushFeed({ dot:'w', msg:`Accepted ${id} — printing now` });
     toast(`Accepted ${id}`, 'g');
-    await pollOnce();
   } catch(e) { toast('Error: ' + e.message, 'd'); }
 }
 
 async function completeOrder(id) {
   try {
-    await apiFetch('/update', { id, update: { status: 'done' } });
-    appState.completed++;
+    await updateOrder(id, { status: 'done' });
     pushFeed({ dot:'g', msg:`${id} completed ✓` });
     toast(`Order ${id} completed`, 'g');
-    await pollOnce();
   } catch(e) { toast('Error: ' + e.message, 'd'); }
 }
 
@@ -1338,10 +1333,9 @@ async function doForward() {
   if (!id) return;
   closeModalDirect();
   try {
-    await apiFetch('/update', { id, update: { status: 'forwarded' } });
+    await updateOrder(id, { status: 'forwarded' });
     pushFeed({ dot:'p', msg:`Forwarded ${id} to partner shop` });
     toast(`Forwarded ${id}`, 'p');
-    await pollOnce();
   } catch(e) { toast('Error: ' + e.message, 'd'); }
 }
 
@@ -1497,59 +1491,23 @@ async function apiFetch(path, body) {
 }
 
 /* ============================================================
-   POLLING — every 2 seconds
+   POLLING — replaced by Firestore real-time listener
+   listenOrders() is called after login and handles all updates.
+   These stubs keep any remaining call-sites from throwing.
 ============================================================ */
 let prevOrderIds = new Set();
 
-async function pollOnce() {
-  try {
-    const res  = await fetch(SERVER_URL + '/orders');
-    if (!res.ok) return;
-    const data = await res.json();
-
-    // Detect new orders
-    data.orders.forEach(o => {
-      if (!prevOrderIds.has(o.id)) {
-        pushFeed({ dot:'g', msg:`New order: ${o.id} — "${o.text.slice(0,35)}…"` });
-        prevOrderIds.add(o.id);
-      }
-    });
-
-    // Detect status changes
-    data.orders.forEach(o => {
-      const old = appState.orders.find(x => x.id === o.id);
-      if (old && old.status !== o.status) {
-        if (o.status === 'printing')  pushFeed({ dot:'w', msg:`${o.id} accepted` });
-        if (o.status === 'done')      { pushFeed({ dot:'g', msg:`${o.id} completed` }); appState.completed++; }
-        if (o.status === 'forwarded') pushFeed({ dot:'p', msg:`${o.id} forwarded` });
-        // Earned update
-        if (o.status === 'printing' && old.status === 'new') {
-          appState.earned += Number(o.payout);
-        }
-      }
-    });
-
-    appState.orders = data.orders;
-    renderDashboard();
-    // Persist user data after every poll
-    if (window._currentUid) saveUserData(window._currentUid);
-  } catch(_) {
-    // server not running yet — silent fail
-  }
-}
+async function pollOnce() { /* no-op — Firestore listener handles this */ }
 
 function startPolling() {
-  pollOnce();
-  appState.polling = setInterval(pollOnce, 2000);
+  // Start Firestore real-time listener instead of HTTP polling
+  if (window.currentUser) listenOrders();
 }
 
 /* ============================================================
    RESET
 ============================================================ */
 async function resetDemo() {
-  try {
-    await fetch(SERVER_URL + '/reset', { method: 'POST' });
-  } catch(_) {}
   appState.orders    = [];
   appState.earned    = 0;
   appState.completed = 0;
@@ -1562,6 +1520,8 @@ async function resetDemo() {
   document.getElementById('send-result').className = 'send-result';
   document.getElementById('btn-send').disabled = true;
   renderDashboard();
+  // Re-attach Firestore listener to reload live data
+  if (window.currentUser) listenOrders();
   toast('Demo reset ✓', 'g');
 }
 
@@ -1602,6 +1562,7 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
+const db   = firebase.firestore();
 
 function handleGoogleSignIn() {
   const btn = document.getElementById('btn-google-signin');
@@ -1649,15 +1610,15 @@ auth.onAuthStateChanged(user => {
     // Boot the app
     initQR();
     renderDashboard();
-    startPolling();
+    startPolling();   // starts Firestore listener
 
     toast('Welcome back, ' + (user.displayName?.split(' ')[0] || 'there') + '! 👋', 'g');
 
   } else {
     window.currentUser = null;
 
-    // Stop polling
-    if (appState.polling) clearInterval(appState.polling);
+    // Detach Firestore listener
+    if (_ordersUnsubscribe) { _ordersUnsubscribe(); _ordersUnsubscribe = null; }
 
     // Reset state
     appState.orders    = [];
