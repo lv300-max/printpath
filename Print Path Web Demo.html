@@ -118,8 +118,15 @@ html, body {
 }
 
 .qr-box {
-  background: #fff; padding: 6px; border-radius: 8px;
+  background: #fff; padding: 8px; border-radius: 10px;
   line-height: 0; flex-shrink: 0;
+}
+.qr-box canvas {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  width: 120px;
+  height: 120px;
 }
 
 .qr-info { display: flex; flex-direction: column; gap: 3px; }
@@ -679,7 +686,7 @@ html, body {
 ============================================================ -->
 <div class="qr-banner">
   <div class="qr-box">
-    <canvas id="qr-canvas" width="80" height="80"></canvas>
+    <canvas id="qr-canvas" style="display:block;"></canvas>
   </div>
   <div class="qr-info">
     <div class="qr-label">Scan to open on your phone</div>
@@ -933,7 +940,7 @@ html, body {
   })(q);
 
   window.drawQR = function(canvas, text, scale) {
-    scale = scale || 3;
+    scale = scale || 5;
     try {
       var qr = q.QrCode.encodeText(text, q.Ecc.MEDIUM);
       var size = qr.size;
@@ -984,7 +991,7 @@ function applyIP() {
   if (!ip) return;
   SERVER_URL = `http://${ip}:3000`;
   document.getElementById('qr-url-text').textContent = SERVER_URL;
-  drawQR(document.getElementById('qr-canvas'), SERVER_URL, 3);
+  drawQR(document.getElementById('qr-canvas'), SERVER_URL, 5);
   toast('Server URL updated — polling ' + SERVER_URL, 'g');
 }
 
@@ -992,7 +999,7 @@ function initQR() {
   const ip = SERVER_URL.replace('http://', '').replace(':3000', '');
   document.getElementById('ip-input').value = ip;
   document.getElementById('qr-url-text').textContent = SERVER_URL;
-  drawQR(document.getElementById('qr-canvas'), SERVER_URL, 3);
+  drawQR(document.getElementById('qr-canvas'), SERVER_URL, 5);
 }
 
 /* ============================================================
