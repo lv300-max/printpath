@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
 <meta name="description" content="PrintPath — AI sticker design and print-on-demand shop dashboard. Generate, order, and track stickers in real time." />
 <meta name="theme-color" content="#08080f" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; connect-src 'self' https:; frame-src https://accounts.google.com;" />
 <title>PrintPath — Live Demo</title>
 <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
 <link rel="apple-touch-icon" sizes="192x192" href="favicon-192.png" />
@@ -17,7 +18,6 @@
    RESET + BASE
 ============================================================ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { overflow-x: hidden; max-width: 100%; }
 
 :root {
   --bg:       #08080f;
@@ -48,12 +48,15 @@ html, body { overflow-x: hidden; max-width: 100%; }
 
 html, body {
   height: 100%;
+  overflow-x: hidden;
+  max-width: 100%;
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, 'Inter', BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 ::-webkit-scrollbar { width: 4px; }
@@ -130,9 +133,11 @@ html, body {
   padding: 4px 11px; border-radius: 99px;
   background: transparent; border: 1px solid var(--border2);
   color: var(--text2); font-size: 0.65rem; font-weight: 600;
-  cursor: pointer; transition: all 0.2s var(--ease);
+  cursor: pointer; transition: all 0.18s var(--ease);
+  -webkit-tap-highlight-color: transparent;
 }
 .btn-logout:hover { border-color: var(--danger); color: var(--danger); }
+.btn-logout:active { transform: scale(0.94); }
 
 /* ── Login screen (shown before auth) ────────────────────── */
 #login-screen {
@@ -178,7 +183,7 @@ html, body {
   box-shadow: 0 2px 12px rgba(0,0,0,0.4);
 }
 .btn-google:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(0,0,0,0.5); }
-.btn-google:active { transform: translateY(0); }
+.btn-google:active { transform: scale(0.97); box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
 .btn-google svg { width: 20px; height: 20px; flex-shrink: 0; }
 .btn-google.loading { opacity: 0.7; cursor: not-allowed; pointer-events: none; }
 .login-terms {
@@ -190,9 +195,11 @@ html, body {
   padding: 5px 13px; border-radius: 99px;
   background: var(--bg3); border: 1px solid var(--border2);
   color: var(--text2); font-size: 0.7rem; font-weight: 600;
-  cursor: pointer; transition: all 0.2s var(--ease);
+  cursor: pointer; transition: all 0.18s var(--ease);
+  -webkit-tap-highlight-color: transparent;
 }
 .btn-reset:hover { border-color: var(--danger); color: var(--danger); background: var(--ddim); }
+.btn-reset:active { transform: scale(0.94); }
 
 /* ============================================================
    QR BANNER
@@ -331,21 +338,33 @@ html, body {
   flex: 1; height: 42px; border-radius: 10px;
   font-size: 0.8rem; font-weight: 700; letter-spacing: 0.03em;
   border: 1px solid transparent;
-  cursor: pointer; transition: all 0.2s var(--ease);
+  cursor: pointer; transition: all 0.18s var(--ease);
   display: flex; align-items: center; justify-content: center; gap: 7px;
   position: relative; overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 .btn::after {
   content:''; position:absolute; inset:0;
-  background: white; opacity: 0; transition: opacity 0.15s;
+  background: white; opacity: 0; transition: opacity 0.12s;
 }
-.btn:active::after { opacity: 0.07; }
+.btn:active { transform: scale(0.96); }
+.btn:active::after { opacity: 0.08; }
 
 .btn-gen {
   background: var(--bg4); border-color: var(--border2); color: var(--text2);
 }
 .btn-gen:hover { border-color: var(--border2); color: var(--text); background: var(--bg3); }
-.btn-gen.generating { color: var(--green); border-color: rgba(0,255,156,0.3); }
+.btn-gen.generating {
+  color: var(--green); border-color: rgba(0,255,156,0.3);
+  pointer-events: none;
+}
+.btn-gen.generating svg {
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 
 .btn-send {
   background: var(--green); color: #030d09;
@@ -573,9 +592,12 @@ html, body {
   flex: 1; height: 32px; border-radius: 7px;
   font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em;
   border: 1px solid transparent; cursor: pointer;
-  transition: all 0.2s var(--ease);
+  transition: all 0.18s var(--ease);
   display: flex; align-items: center; justify-content: center; gap: 5px;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
+.oact:not(:disabled):active { transform: scale(0.95); }
 .oact svg { width: 11px; height: 11px; }
 
 .oact-accept {
@@ -1693,12 +1715,8 @@ function loadUserData(uid) {
 }
 
 /* ============================================================
-   INIT — auth state observer above handles boot
+   INIT — firebase.auth().onAuthStateChanged() above drives boot
 ============================================================ */
-document.addEventListener('DOMContentLoaded', function() {
-  // Login screen visible by default.
-  // firebase.auth().onAuthStateChanged() above drives everything.
-});
 </script>
 </body>
 </html>
