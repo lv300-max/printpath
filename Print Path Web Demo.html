@@ -6,8 +6,9 @@
 <title>PrintPath — Live Demo</title>
 <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
 <link rel="apple-touch-icon" sizes="192x192" href="favicon-192.png" />
-<!-- Firebase -->
-<script type="module" src="/firebase-auth.js"></script>
+<!-- Firebase compat SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <style>
 /* ============================================================
    RESET + BASE
@@ -1585,84 +1586,94 @@ function toast(msg, type) {
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 /* ============================================================
-   FIREBASE AUTH — called from firebase-auth.js via window.*
-   These stubs are replaced once Firebase loads.
-   Fallback: skip login if Firebase not configured.
+   FIREBASE AUTH (compat SDK)
 ============================================================ */
+
+// ── PASTE YOUR FIREBASE CONFIG HERE ──────────────────────────
+const firebaseConfig = {
+  apiKey:            "YOUR_API_KEY",
+  authDomain:        "YOUR_PROJECT.firebaseapp.com",
+  projectId:         "YOUR_PROJECT_ID",
+  storageBucket:     "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId:             "YOUR_APP_ID",
+};
+// ─────────────────────────────────────────────────────────────
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+
 function handleGoogleSignIn() {
   const btn = document.getElementById('btn-google-signin');
   btn.classList.add('loading');
-  btn.querySelector('span') && (btn.lastChild.textContent = ' Signing in…');
-  // Actual sign-in is handled by firebase-auth.js
-  // If Firebase isn't configured, auto-skip after 1s
-  if (!window._firebaseReady) {
-    setTimeout(() => onAuthSuccess({ uid: 'demo', displayName: 'Demo User', photoURL: null }), 800);
-  }
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider).catch(err => {
+    btn.classList.remove('loading');
+    if (err.code !== 'auth/popup-closed-by-user') {
+      console.error('[PrintPath] Sign-in error:', err.message);
+    }
+  });
 }
 
 function handleLogout() {
-  if (window._firebaseSignOut) {
-    window._firebaseSignOut();
-  } else {
-    onAuthSignedOut();
-  }
+  if (window._currentUid) saveUserData(window._currentUid);
+  auth.signOut();
 }
 
-// Called by firebase-auth.js when user signs in
-window.onAuthSuccess = function(user) {
-  // Show user chip
-  document.getElementById('user-chip').style.display = 'flex';
-  document.getElementById('btn-logout').style.display = 'block';
-  document.getElementById('user-name').textContent = user.displayName?.split(' ')[0] || 'User';
+auth.onAuthStateChanged(user => {
+  if (user) {
+    window.currentUser  = user.uid;
+    window._currentUid  = user.uid;
 
-  if (user.photoURL) {
-    const img = document.getElementById('user-avatar-img');
-    img.src = user.photoURL;
-    img.style.display = 'block';
-    document.getElementById('user-avatar-fallback').style.display = 'none';
+    // Update user chip
+    document.getElementById('user-chip').style.display = 'flex';
+    document.getElementById('btn-logout').style.display = 'block';
+    document.getElementById('user-name').textContent = user.displayName?.split(' ')[0] || 'User';
+
+    if (user.photoURL) {
+      const img = document.getElementById('user-avatar-img');
+      img.src = user.photoURL;
+      img.style.display = 'block';
+      document.getElementById('user-avatar-fallback').style.display = 'none';
+    } else {
+      const initials = (user.displayName || 'U').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+      document.getElementById('user-avatar-fallback').textContent = initials;
+    }
+
+    // Load persisted data for this user
+    loadUserData(user.uid);
+
+    // Hide login, show app
+    document.getElementById('login-screen').classList.add('hidden');
+
+    // Boot the app
+    initQR();
+    renderDashboard();
+    startPolling();
+
+    toast('Welcome back, ' + (user.displayName?.split(' ')[0] || 'there') + '! 👋', 'g');
+
   } else {
-    const initials = (user.displayName || 'U').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
-    document.getElementById('user-avatar-fallback').textContent = initials;
+    window.currentUser = null;
+
+    // Stop polling
+    if (appState.polling) clearInterval(appState.polling);
+
+    // Reset state
+    appState.orders    = [];
+    appState.earned    = 0;
+    appState.completed = 0;
+    appState.sentIds   = [];
+    appState.feedItems = [{ dot:'m', msg:'Signed out', ts: nowStr() }];
+
+    // Hide user chip
+    document.getElementById('user-chip').style.display = 'none';
+    document.getElementById('btn-logout').style.display = 'none';
+
+    // Show login
+    document.getElementById('login-screen').classList.remove('hidden');
   }
-
-  // Load persisted user data from localStorage
-  loadUserData(user.uid);
-
-  // Hide login screen, show app
-  document.getElementById('login-screen').classList.add('hidden');
-
-  // Start the demo
-  initQR();
-  renderDashboard();
-  startPolling();
-
-  toast('Welcome back, ' + (user.displayName?.split(' ')[0] || 'there') + '! 👋', 'g');
-};
-
-// Called by firebase-auth.js when user signs out
-window.onAuthSignedOut = function() {
-  // Save current state before clearing
-  if (window._currentUid) saveUserData(window._currentUid);
-  window._currentUid = null;
-
-  // Stop polling
-  if (appState.polling) clearInterval(appState.polling);
-
-  // Reset state
-  appState.orders    = [];
-  appState.earned    = 0;
-  appState.completed = 0;
-  appState.sentIds   = [];
-  appState.feedItems = [{ dot:'m', msg:'Signed out', ts: nowStr() }];
-
-  // Hide user chip
-  document.getElementById('user-chip').style.display = 'none';
-  document.getElementById('btn-logout').style.display = 'none';
-
-  // Show login screen
-  document.getElementById('login-screen').classList.remove('hidden');
-  toast('Signed out', 'g');
-};
+});
 
 /* ============================================================
    USER DATA PERSISTENCE (localStorage keyed by uid)
@@ -1702,20 +1713,12 @@ function loadUserData(uid) {
   }
 }
 
-// Auto-save on every poll cycle
-const _origPollOnce = typeof pollOnce === 'function' ? pollOnce : null;
-
 /* ============================================================
-   INIT — gated by Firebase auth
-   Firebase will call onAuthSuccess / onAuthSignedOut.
-   If Firebase is not configured, show login screen and
-   auto-proceed with demo user on button click.
+   INIT — auth state observer above handles boot
 ============================================================ */
 document.addEventListener('DOMContentLoaded', function() {
-  // Login screen is shown by default (visible in HTML)
-  // Firebase auth state observer in firebase-auth.js will
-  // call onAuthSuccess if user is already signed in.
-  // If Firebase isn't configured, handleGoogleSignIn() falls back.
+  // Login screen visible by default.
+  // firebase.auth().onAuthStateChanged() above drives everything.
 });
 </script>
 </body>
