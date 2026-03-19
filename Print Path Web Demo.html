@@ -15,6 +15,7 @@
    RESET + BASE
 ============================================================ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { overflow-x: hidden; max-width: 100%; }
 
 :root {
   --bg:       #08080f;
@@ -87,7 +88,7 @@ html, body {
   border-radius: 99px; border: 1px solid rgba(0,255,156,0.2);
 }
 
-.topbar-right { display: flex; align-items: center; gap: 10px; }
+.topbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
 .live-pill {
   display: flex; align-items: center; gap: 6px;
@@ -234,11 +235,12 @@ html, body {
   display: flex; align-items: center; gap: 7px;
   background: var(--bg3); border: 1px solid var(--border2);
   border-radius: 8px; padding: 6px 10px;
+  min-width: 0; flex: 1; max-width: 320px;
 }
 .ip-edit input {
   background: transparent; border: none; outline: none;
   color: var(--green); font-size: 0.82rem; font-weight: 700;
-  width: 180px; font-family: inherit;
+  width: 100%; min-width: 0; font-family: inherit;
 }
 .ip-edit label { font-size: 0.6rem; color: var(--text3); font-weight: 600; white-space: nowrap; }
 .btn-apply {
@@ -320,7 +322,7 @@ html, body {
 .input-wrap textarea::placeholder { color: var(--text3); }
 .input-wrap textarea:focus { border-color: rgba(0,255,156,0.35); }
 
-.btn-row { display: flex; gap: 8px; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
 
 .btn {
   flex: 1; height: 42px; border-radius: 10px;
@@ -742,9 +744,21 @@ html, body {
 ============================================================ */
 @media (max-width: 768px) {
   .dash-stats { grid-template-columns: 1fr 1fr; }
-  .qr-banner  { justify-content: flex-start; }
-  .topbar     { padding: 0 14px; }
+  .qr-banner  { justify-content: flex-start; flex-direction: column; align-items: flex-start; gap: 12px; }
+  .topbar     { padding: 0 14px; height: auto; min-height: 52px; flex-wrap: wrap; gap: 8px; }
   .panel      { padding: 16px; }
+  .btn        { min-width: 0; }
+  .btn-row    { flex-direction: column; }
+  .opt-row    { gap: 6px; }
+  .opt-group  { min-width: 0; }
+  .price-box  { flex-wrap: wrap; }
+  .order-card { padding: 12px; }
+  .order-actions { flex-wrap: wrap; gap: 6px; }
+  .oact       { flex: 1; min-width: 80px; }
+  .dash-stats { gap: 8px; }
+  .stat-box   { padding: 14px 12px; }
+  .user-chip  { max-width: 160px; overflow: hidden; }
+  .auth-name, #user-name { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
 </style>
 </head>
