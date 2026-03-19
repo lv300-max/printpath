@@ -57,10 +57,51 @@ function addLog(msg) {
   console.log(`[${entry.ts}] ${msg}`);
 }
 
-function calcPayout(qty) {
-  // Base $20 + $0.50 per sticker (shop receives ~60%)
-  const total = 20 + qty * 0.5;
-  return parseFloat(total.toFixed(2));
+// ── Pricing Engine ───────────────────────────────────────────
+//
+//  calculatePrice(size, qty) → final customer price (USD, rounded to cents)
+//
+//  Size base rates (per unit):
+//    3"  → $0.18 / sticker
+//    5"  → $0.32 / sticker
+//    7"  → $0.52 / sticker
+//
+//  Bulk discount tiers (applied to subtotal before markup):
+//    qty >=  500 → 25% off
+//    qty >=  200 → 18% off
+//    qty >=  100 → 12% off
+//    qty >=   50 →  7% off
+//    qty <    50 →  0% off
+//
+//  Then: +40% markup + $5 flat AI fee
+
+const SIZE_BASE = {
+  '3"': 0.18,
+  '5"': 0.32,
+  '7"': 0.52,
+};
+
+function bulkDiscount(qty) {
+  if (qty >= 500) return 0.25;
+  if (qty >= 200) return 0.18;
+  if (qty >= 100) return 0.12;
+  if (qty >=  50) return 0.07;
+  return 0;
+}
+
+function calculatePrice(size, qty) {
+  const base     = SIZE_BASE[size] ?? SIZE_BASE['3"'];
+  const subtotal = base * qty;
+  const discount = subtotal * bulkDiscount(qty);
+  const afterDiscount = subtotal - discount;
+  const withMarkup    = afterDiscount * 1.4;   // +40% markup
+  const total         = withMarkup + 5;         // +$5 AI fee
+  return Math.round(total * 100) / 100;         // round to cents
+}
+
+// Shop payout ≈ 60% of customer price
+function calcPayout(size, qty) {
+  return Math.round(calculatePrice(size, qty) * 0.6 * 100) / 100;
 }
 
 // Notify shop after a paid order is created
@@ -107,6 +148,16 @@ app.get('/ping', (_req, res) => {
   });
 });
 
+// GET /price?size=3"&qty=50 — return calculated price
+app.get('/price', (req, res) => {
+  const size   = req.query.size || '3"';
+  const qty    = Math.max(1, Number(req.query.qty) || 50);
+  const price  = calculatePrice(size, qty);
+  const payout = calcPayout(size, qty);
+  const disc   = Math.round(bulkDiscount(qty) * 100);
+  res.json({ size, qty, price, payout, discountPct: disc });
+});
+
 // GET /orders — return all orders + log
 app.get('/orders', (_req, res) => {
   res.json({ orders: store.orders, log: store.log });
@@ -124,7 +175,8 @@ app.post('/order', (req, res) => {
     text:      text.trim().slice(0, 120),
     status:    'new',
     paid:      false,
-    payout:    calcPayout(Number(qty) || 50),
+    payout:    calcPayout(size || '3"', Number(qty) || 50),
+    price:     calculatePrice(size || '3"', Number(qty) || 50),
     size:      size  || '3"',
     qty:       Number(qty) || 50,
     finish:    ['Matte', 'Gloss', 'Holographic'][Math.floor(Math.random() * 3)],
@@ -167,9 +219,18 @@ app.post('/create-checkout-session', async (req, res) => {
   const { text, size, qty } = req.body;
   if (!text) return res.status(400).json({ error: 'text required' });
 
-  const qtyNum    = Math.max(1, Math.min(10000, Number(qty) || 50));
-  const sizeStr   = size || '3"';
-  const unitCents = Math.round((20 + qtyNum * 0.5) * 100); // $20 base + $0.50/sticker
+  const qtyNum  = Math.max(1, Math.min(10000, Number(qty) || 50));
+  const sizeStr = ['3"','5"','7"'].includes(size) ? size : '3"';
+  const price   = calculatePrice(sizeStr, qtyNum);
+  const unitCents = Math.round(price * 100);
+  const discPct   = Math.round(bulkDiscount(qtyNum) * 100);
+
+  const descParts = [
+    text.slice(0, 300),
+    `Size: ${sizeStr} | Qty: ${qtyNum}`,
+    discPct > 0 ? `Bulk discount: ${discPct}% applied` : null,
+    `Includes AI design fee`,
+  ].filter(Boolean).join(' · ');
 
   // Encode order info in metadata so we can create the real order on success
   try {
@@ -180,8 +241,8 @@ app.post('/create-checkout-session', async (req, res) => {
           currency:     'usd',
           product_data: {
             name:        `Custom Sticker — ${sizeStr} × Qty ${qtyNum}`,
-            description: text.slice(0, 500),
-            images:      [],          // add a product image URL here if available
+            description: descParts,
+            images:      [],
           },
           unit_amount: unitCents,
         },
@@ -227,13 +288,15 @@ app.get('/success', async (req, res) => {
       const meta   = session.metadata || {};
       const qtyNum = Number(meta.qty) || 50;
 
+      const orderSize = ['3"','5"','7"'].includes(meta.size) ? meta.size : '3"';
       const order = {
         id:              'ORD-' + randomUUID().slice(0, 6).toUpperCase(),
         text:            (meta.design_text || '').slice(0, 120),
         status:          'paid',
         paid:            true,
-        payout:          calcPayout(qtyNum),
-        size:            meta.size || '3"',
+        price:           calculatePrice(orderSize, qtyNum),
+        payout:          calcPayout(orderSize, qtyNum),
+        size:            orderSize,
         qty:             qtyNum,
         finish:          'Matte',
         stripeSessionId: session.id,
