@@ -3,7 +3,12 @@
   "version": "1.0.0",
   "type": "module",
   "description": "PrintPath — AI-powered merch design platform",
+  "scripts": {
+    "demo": "node demo-server.js"
+  },
   "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
     "openai": "^4.90.0"
   }
 }
