@@ -667,7 +667,7 @@ html, body {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
           </svg>
-          Send Order
+          Buy &amp; Send to Print
         </button>
       </div>
 
@@ -950,42 +950,60 @@ function fakeGenerate() {
 }
 
 /* ============================================================
-   CUSTOMER — SEND ORDER
+   CUSTOMER — SEND ORDER (Stripe Checkout → fallback demo)
 ============================================================ */
 async function sendOrder() {
   const input = document.getElementById('design-input').value.trim();
   if (!input) { toast('Enter a design first', 'w'); return; }
 
   const sendBtn = document.getElementById('btn-send');
-  sendBtn.disabled = true;
-  sendBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Sending…';
-
   const resultEl = document.getElementById('send-result');
+  sendBtn.disabled = true;
+  sendBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Preparing…';
   resultEl.className = 'send-result';
-  resultEl.style.display = 'none';
+
+  const qty  = 50;
+  const size = generated?.size || '3"';
 
   try {
-    await delay(1000 + Math.random() * 500);
-
-    const res = await fetch(SERVER_URL + '/order', {
+    // ── Try Stripe Checkout ───────────────────────────────────
+    const stripeRes = await fetch(SERVER_URL + '/create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: input }),
+      body: JSON.stringify({ text: input, size, qty }),
     });
 
-    if (!res.ok) throw new Error('Server error ' + res.status);
-    const order = await res.json();
+    if (stripeRes.ok) {
+      const { url } = await stripeRes.json();
+      // Redirect to Stripe Checkout
+      toast('Redirecting to checkout…', 'g');
+      window.location.href = url;
+      return; // page will navigate away
+    }
+
+    // Stripe not configured (503) → fall through to demo mode
+    if (stripeRes.status !== 503) throw new Error('Server error ' + stripeRes.status);
+
+    // ── Demo fallback (no Stripe key) ─────────────────────────
+    sendBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Sending…';
+    await delay(1000 + Math.random() * 500);
+
+    const orderRes = await fetch(SERVER_URL + '/order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: input, size, qty }),
+    });
+
+    if (!orderRes.ok) throw new Error('Server error ' + orderRes.status);
+    const order = await orderRes.json();
 
     appState.sentIds.push(order.id);
-    toast(`Order ${order.id} sent to print shop!`, 'g');
+    toast(`[Demo] Order ${order.id} sent to print shop!`, 'g');
     resultEl.className = 'send-result show ok';
-    resultEl.innerHTML = `✓ &nbsp;<span>Order <strong>${order.id}</strong> received — shop will respond shortly</span>`;
-    resultEl.style.display = 'flex';
+    resultEl.innerHTML = `✓ &nbsp;<span>[Demo mode — add Stripe key for real payments] Order <strong>${order.id}</strong> received</span>`;
 
     document.getElementById('design-input').value = '';
     document.getElementById('preview-card').classList.remove('visible');
-    document.getElementById('btn-send').disabled = true;
-    document.getElementById('btn-send').innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send Order`;
     generated = null;
 
     await pollOnce();
@@ -994,7 +1012,7 @@ async function sendOrder() {
     resultEl.innerHTML = '✕ &nbsp;Could not reach server. Is <strong>demo-server.js</strong> running?';
     resultEl.style.display = 'flex';
     sendBtn.disabled = false;
-    sendBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send Order`;
+    sendBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Buy &amp; Send to Print`;
     toast('Server unreachable — check IP and server', 'd');
   }
 }

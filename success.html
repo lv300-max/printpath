@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Order Confirmed — PrintPath</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:     #08080f;
+  --bg2:    #0d0d1a;
+  --bg3:    #131325;
+  --border: rgba(255,255,255,0.08);
+  --text:   #f0f0f8;
+  --text2:  #8888a8;
+  --green:  #00ff9c;
+  --gdim:   rgba(0,255,156,0.08);
+  --gglow:  0 0 60px rgba(0,255,156,0.2);
+  --ease:   cubic-bezier(0.22,1,0.36,1);
+}
+
+html, body {
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, 'Inter', BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 48px 40px;
+  max-width: 440px;
+  width: 100%;
+  text-align: center;
+  box-shadow: var(--gglow);
+  animation: fadeUp 0.6s var(--ease);
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.check-ring {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  background: var(--gdim);
+  border: 2px solid rgba(0,255,156,0.35);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 24px;
+  animation: popIn 0.5s 0.2s var(--ease) both;
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.5); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.check-ring svg {
+  width: 32px; height: 32px;
+  color: var(--green);
+  stroke-dasharray: 60;
+  stroke-dashoffset: 60;
+  animation: drawCheck 0.5s 0.5s ease forwards;
+}
+
+@keyframes drawCheck {
+  to { stroke-dashoffset: 0; }
+}
+
+.headline {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin-bottom: 10px;
+}
+
+.sub {
+  font-size: 0.9rem;
+  color: var(--text2);
+  line-height: 1.6;
+  margin-bottom: 32px;
+}
+
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0 0 24px;
+}
+
+.detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-size: 0.85rem;
+}
+.detail-label { color: var(--text2); }
+.detail-val   { font-weight: 600; }
+.detail-val.green { color: var(--green); }
+
+.steps {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin: 24px 0 0;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 0.82rem;
+  color: var(--text2);
+}
+
+.step-num {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--gdim);
+  border: 1px solid rgba(0,255,156,0.25);
+  color: var(--green);
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 28px;
+  height: 44px;
+  padding: 0 24px;
+  border-radius: 11px;
+  background: var(--green);
+  color: #030d09;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s var(--ease);
+}
+.btn-back:hover {
+  background: #00cc7a;
+  box-shadow: 0 0 30px rgba(0,255,156,0.35);
+  transform: translateY(-1px);
+}
+</style>
+</head>
+<body>
+
+<div class="card">
+
+  <!-- Check icon -->
+  <div class="check-ring">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+         stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+  </div>
+
+  <div class="headline">Order sent to print shop</div>
+  <div class="sub">
+    Your payment was successful and your design<br>
+    is now queued for production.
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="detail-row">
+    <span class="detail-label">Status</span>
+    <span class="detail-val green">✓ Paid &amp; Queued</span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">Print shop</span>
+    <span class="detail-val">BlendedPrints</span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">Estimated turnaround</span>
+    <span class="detail-val">3–5 business days</span>
+  </div>
+
+  <!-- What happens next -->
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <span>Print shop receives your order and design specs</span>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <span>Design is reviewed and sent to production</span>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <span>Stickers shipped directly to you</span>
+    </div>
+  </div>
+
+  <a href="/" class="btn-back">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="19" y1="12" x2="5" y2="12"/>
+      <polyline points="12 19 5 12 12 5"/>
+    </svg>
+    Back to PrintPath
+  </a>
+
+</div>
+
+</body>
+</html>
