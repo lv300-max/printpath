@@ -35,10 +35,10 @@ const HYPE_MESSAGES = [
 ];
 
 /* ====================================================
-   STRIPE CONFIG (replace with your actual keys)
+   STRIPE CONFIG
    ==================================================== */
 const STRIPE_CONFIG = {
-  publishableKey: 'pk_test_YOUR_STRIPE_PUBLISHABLE_KEY_HERE',
+  publishableKey: 'pk_test_51T2RsdCgrKKXkcmpTeCPhct3Wu7TL6g2YWCMozluIFt9DiBkAqB4nBbvhE5glf91ksqMGmtsseiWDdxAyaX7LEaQ00skMUw6pj',
   // In production, your server creates a Checkout Session
   // and returns a session ID to redirect to.
   successUrl: `${window.location.origin}/?checkout=success`,
