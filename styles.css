@@ -1895,6 +1895,110 @@ h3 { font-size: clamp(1.15rem, 2vw, 1.5rem); letter-spacing: -0.02em; }
 
 .install-banner.visible { transform: translateY(0); }
 
+/* ====================================================
+   PREMIUM INSTALL CARD
+   Floating card shown at engagement peak moments.
+   Slides in from bottom-right, non-blocking.
+   ==================================================== */
+.pp-install-card {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  width: 300px;
+  background: var(--bg-card, #13141a);
+  border: 1px solid rgba(0, 229, 160, 0.25);
+  border-radius: 16px;
+  padding: 1.1rem 1.1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  z-index: 200;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.55), 0 0 0 1px rgba(0,229,160,0.08);
+  /* hidden by default */
+  opacity: 0;
+  transform: translateY(20px) scale(0.97);
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.pp-install-card.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.pp-install-card-close {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.7rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #6b7280);
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+  font-family: inherit;
+  transition: color 0.15s;
+}
+.pp-install-card-close:hover { color: var(--text-primary, #e8eaf6); }
+
+.pp-install-card-icon {
+  font-size: 1.4rem;
+  color: var(--accent, #00e5a0);
+  line-height: 1;
+}
+
+.pp-install-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pp-install-card-body strong {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--text-primary, #e8eaf6);
+  letter-spacing: -0.01em;
+}
+
+.pp-install-card-body span {
+  font-size: 0.76rem;
+  color: var(--text-secondary, #9aa0b4);
+  line-height: 1.45;
+}
+
+.pp-install-card-btn {
+  margin-top: 0.25rem;
+  padding: 0.55rem 1rem;
+  border-radius: 10px;
+  border: none;
+  background: var(--accent, #00e5a0);
+  color: #060609;
+  font-size: 0.83rem;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 0.02em;
+  transition: opacity 0.15s, transform 0.15s;
+  text-align: center;
+}
+
+.pp-install-card-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.pp-install-card-btn:active { transform: translateY(0); }
+
+@media (max-width: 480px) {
+  .pp-install-card {
+    right: 0.75rem;
+    left: 0.75rem;
+    width: auto;
+  }
+}
+
 .install-banner-text {
   flex: 1;
   min-width: 0;
@@ -3475,6 +3579,7 @@ footer {
 }
 
 .ai-gen-modal {
+  position: relative; /* anchor for final confirmation overlay */
   background: var(--bg-secondary);
   border: 1px solid rgba(255,255,255,0.04);
   border-radius: var(--radius-lg);
@@ -3853,6 +3958,624 @@ footer {
   color: var(--text-muted);
   white-space: nowrap;
 }
+
+.ai-qa-mode-picker {
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1.5px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.28rem 0.6rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s ease;
+  max-width: 180px;
+}
+
+.ai-qa-mode-picker:hover,
+.ai-qa-mode-picker:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+[data-theme="light"] .ai-qa-mode-picker {
+  background: #fff;
+  color: #111;
+}
+
+/* ---- Top "What are you making?" row (Fix 5) ---- */
+.ai-making-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.ai-making-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ai-qa-mode-top {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.35rem 0.75rem;
+  border-color: var(--accent);
+  color: var(--accent);
+  max-width: 160px;
+}
+
+/* ---- Fix Design CTA (Fix 1) ---- */
+#ai-fix-design-btn {
+  background: transparent;
+  border: 1.5px solid var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  animation: none;
+}
+
+#ai-fix-design-btn:hover {
+  background: rgba(0, 229, 160, 0.1);
+}
+
+/* ===================================================
+   DOPAMINE LOOP UX — loading skeletons, fade-in,
+   improve bar, progression, confidence toast
+   =================================================== */
+
+/* ---- Skeleton cards ---- */
+@keyframes skeleton-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.ai-skeleton-card {
+  background: var(--surface-2, #13141a);
+  border-radius: 12px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ai-skeleton-img {
+  width: 100%;
+  aspect-ratio: 1;
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.03) 25%,
+    rgba(255,255,255,0.08) 37%,
+    rgba(255,255,255,0.03) 63%
+  );
+  background-size: 800px 100%;
+  animation: skeleton-shimmer 1.4s infinite linear;
+  border-radius: 8px;
+}
+
+.ai-skeleton-line {
+  height: 10px;
+  margin: 10px 12px 6px;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.04) 25%,
+    rgba(255,255,255,0.09) 37%,
+    rgba(255,255,255,0.04) 63%
+  );
+  background-size: 800px 100%;
+  animation: skeleton-shimmer 1.4s infinite linear;
+}
+
+.ai-skeleton-line--wide  { width: 70%; }
+.ai-skeleton-line--narrow { width: 45%; }
+
+/* ---- Fade-in cards ---- */
+@keyframes cardFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in-card {
+  animation: cardFadeIn 0.35s ease both;
+}
+
+/* ---- "Recommended" label enhancement ---- */
+.ai-best-label {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: var(--accent, #00e5a0);
+  color: #060609;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 3px 9px;
+  border-radius: 999px;
+  z-index: 4;
+  text-transform: uppercase;
+}
+
+/* ---- Print Ready glow reward ---- */
+@keyframes printReadyGlow {
+  0%   { box-shadow: 0 0 0 0 rgba(0,229,160,0.0); }
+  30%  { box-shadow: 0 0 0 8px rgba(0,229,160,0.45); }
+  60%  { box-shadow: 0 0 0 14px rgba(0,229,160,0.15); }
+  100% { box-shadow: 0 0 0 0 rgba(0,229,160,0.0); }
+}
+
+.ai-result-card.print-ready-glow {
+  animation: printReadyGlow 1.1s ease forwards;
+}
+
+/* ---- Improve / variation bar ---- */
+.ai-improve-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 0 0.2rem;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  margin-top: 0.5rem;
+}
+
+.ai-improve-btn {
+  padding: 0.42rem 1.1rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--accent, #00e5a0);
+  background: transparent;
+  color: var(--accent, #00e5a0);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.ai-improve-btn:hover {
+  background: rgba(0,229,160,0.1);
+  box-shadow: 0 0 12px rgba(0,229,160,0.2);
+  transform: translateY(-1px);
+}
+
+.ai-variation-btns {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.ai-var-btn {
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: transparent;
+  color: var(--text-secondary, #9aa0b4);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.ai-var-btn:hover {
+  border-color: rgba(255,255,255,0.3);
+  color: var(--text-primary, #e8eaf6);
+  background: rgba(255,255,255,0.05);
+  transform: translateY(-1px);
+}
+
+/* ---- Progression text ---- */
+.ai-progression-msg {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.45rem 0.8rem;
+  border-radius: 8px;
+  margin-top: 0.5rem;
+  letter-spacing: 0.01em;
+  border-left: 3px solid transparent;
+}
+
+.ai-progression-msg.prog-ready {
+  color: var(--accent, #00e5a0);
+  background: rgba(0,229,160,0.08);
+  border-color: var(--accent, #00e5a0);
+}
+
+.ai-progression-msg.prog-nearmiss {
+  color: #f5c842;
+  background: rgba(245,200,66,0.08);
+  border-color: #f5c842;
+}
+
+.ai-progression-msg.prog-close {
+  color: #78b8ff;
+  background: rgba(120,184,255,0.08);
+  border-color: #78b8ff;
+}
+
+.ai-progression-msg.prog-start {
+  color: var(--text-secondary, #9aa0b4);
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.1);
+}
+
+/* ---- Quick start label ---- */
+.ai-quick-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary, #9aa0b4);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+  opacity: 0.7;
+}
+
+/* ---- Auto-saved save button state ---- */
+.ai-save-btn.auto-saved::after {
+  content: attr(data-auto-label);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  background: rgba(0,229,160,0.12);
+  color: var(--accent, #00e5a0);
+  border: 1px solid rgba(0,229,160,0.3);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: cardFadeIn 0.25s ease both;
+}
+
+.ai-save-btn {
+  position: relative; /* needed for ::after */
+}
+
+/* ---- Continue confidence toast ---- */
+@keyframes confFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.ai-confidence-toast {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent, #00e5a0);
+  background: rgba(0,229,160,0.09);
+  border: 1px solid rgba(0,229,160,0.25);
+  border-radius: 8px;
+  padding: 0.45rem 0.9rem;
+  margin-top: 0.4rem;
+  opacity: 0;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  transform: translateY(4px);
+  pointer-events: none;
+}
+
+.ai-confidence-toast.conf-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ---- Quick start chips (label + emoji style) ---- */
+
+/* ===================================================
+   CONVERSION SYSTEM — confidence bar, mockup preview,
+   compare mode, price strip, trust badge, send to print,
+   final confirmation, save lock-in
+   =================================================== */
+
+/* ---- Feature 1: Confidence bar ---- */
+.ai-confidence-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(0, 229, 160, 0.08);
+  border: 1px solid rgba(0, 229, 160, 0.28);
+  border-radius: 10px;
+  padding: 0.6rem 1rem;
+  margin: 0.5rem 0 0.25rem;
+}
+
+.ai-cb-icon { font-size: 1.1rem; flex-shrink: 0; }
+
+.ai-cb-text { display: flex; flex-direction: column; gap: 1px; }
+
+.ai-cb-text strong {
+  font-size: 0.83rem;
+  font-weight: 800;
+  color: var(--accent, #00e5a0);
+  letter-spacing: 0.02em;
+}
+
+.ai-cb-text span {
+  font-size: 0.75rem;
+  color: rgba(0, 229, 160, 0.75);
+}
+
+/* ---- Feature 2: Mockup preview ---- */
+.ai-mockup-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  margin: 0.5rem 0 0.3rem;
+}
+
+.ai-mockup-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary, #9aa0b4);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+}
+
+.ai-mockup-btn {
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  border: 1.5px solid rgba(255,255,255,0.12);
+  background: transparent;
+  color: var(--text-secondary, #9aa0b4);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.ai-mockup-btn:hover,
+.ai-mockup-btn.active {
+  border-color: var(--accent, #00e5a0);
+  color: var(--accent, #00e5a0);
+  background: rgba(0,229,160,0.08);
+}
+
+.ai-mockup-stage {
+  position: relative;
+  margin: 0.4rem auto;
+  width: 100%;
+  max-width: 340px;
+}
+
+.ai-mockup-canvas {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.06);
+  display: block;
+}
+
+.ai-mockup-note {
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--text-muted, #6b7280);
+  margin: 0.35rem 0 0;
+}
+
+/* ---- Feature 3: Compare mode ---- */
+.ai-compare-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 0.4rem 0 0.2rem;
+}
+
+.ai-compare-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary, #9aa0b4);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+}
+
+.ai-compare-btns { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+
+.ai-compare-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  border: 1.5px solid rgba(255,255,255,0.12);
+  background: transparent;
+  color: var(--text-secondary, #9aa0b4);
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+
+.ai-compare-btn:hover {
+  border-color: rgba(255,255,255,0.3);
+  color: var(--text-primary, #e8eaf6);
+  background: rgba(255,255,255,0.05);
+}
+
+.ai-compare-btn.active {
+  border-color: var(--accent, #00e5a0);
+  color: var(--accent, #00e5a0);
+  background: rgba(0,229,160,0.08);
+}
+
+.ai-compare-score {
+  font-size: 0.68rem;
+  opacity: 0.7;
+  font-weight: 600;
+}
+
+/* ---- Features 5 + 9: Price strip + trust badge ---- */
+.ai-price-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+  padding: 0.65rem 1rem;
+  margin: 0.5rem 0 0.25rem;
+}
+
+.ai-price-left {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.ai-price-from {
+  font-size: 0.72rem;
+  color: var(--text-secondary, #9aa0b4);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ai-price-num {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text-primary, #e8eaf6);
+  letter-spacing: -0.02em;
+}
+
+.ai-price-unit {
+  font-size: 0.72rem;
+  color: var(--text-secondary, #9aa0b4);
+}
+
+.ai-trust-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--text-secondary, #9aa0b4);
+  line-height: 1.4;
+}
+
+.ai-trust-icon { font-size: 1rem; }
+
+/* ---- Feature 10: Send to Print primary CTA ---- */
+.ai-send-to-print {
+  font-size: 0.9rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.04em;
+  gap: 0.4rem;
+  padding: 0.7rem 1.6rem !important;
+  order: -1; /* float to top of buttons */
+}
+
+/* ---- Feature 13: Final confirmation overlay ---- */
+.ai-final-confirm {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 6, 9, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  border-radius: 16px;
+  animation: cardFadeIn 0.3s ease both;
+}
+
+.ai-final-inner {
+  text-align: center;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.ai-final-icon {
+  font-size: 2.5rem;
+  animation: cardFadeIn 0.4s 0.1s ease both;
+}
+
+.ai-final-heading {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--text-primary, #e8eaf6);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.ai-final-sub {
+  font-size: 0.85rem;
+  color: var(--accent, #00e5a0);
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ai-final-bar {
+  width: 220px;
+  height: 3px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.ai-final-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent, #00e5a0);
+  border-radius: 999px;
+  box-shadow: 0 0 8px rgba(0,229,160,0.6);
+}
+
+/* ---- Feature 8: Save lock-in banner ---- */
+.ai-save-lock {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: rgba(13,14,20,0.96);
+  border: 1px solid rgba(0,229,160,0.3);
+  border-radius: 12px;
+  padding: 0.7rem 1.1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary, #e8eaf6);
+  z-index: 9999;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  max-width: 90vw;
+  animation: cardFadeIn 0.3s ease both;
+  white-space: nowrap;
+}
+
+.ai-save-lock-icon { font-size: 1rem; flex-shrink: 0; }
+
+.ai-save-lock-dismiss {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #6b7280);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0 0 0 0.4rem;
+  line-height: 1;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+
+.ai-save-lock-dismiss:hover { color: var(--text-primary, #e8eaf6); }
 
 /* ---- Quick Prompt Chips ---- */
 .ai-quick-prompts {
@@ -4367,6 +5090,102 @@ footer {
 [data-theme="light"] .ai-dpi-badge.fail {
   background: #fee2e2;
   color: #991b1b;
+}
+
+/* ================================================================
+   POST-GENERATION QA SYSTEM — badges, rejected overlay, score row
+   ================================================================ */
+
+/* Per-card QA row (below the DPI row) */
+.ai-result-qa-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  padding: 0 0.1rem 0.1rem;
+}
+
+/* QA badge base */
+.ai-qa-badge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 0.18rem 0.48rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.ai-qa-badge.pass {
+  background: rgba(0,229,160,0.13);
+  color: var(--accent);
+}
+
+.ai-qa-badge.fail {
+  background: rgba(248,113,113,0.15);
+  color: #f87171;
+}
+
+.ai-qa-badge.pending {
+  background: rgba(251,191,36,0.12);
+  color: #fbbf24;
+  animation: ai-qa-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes ai-qa-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+.ai-qa-score {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  opacity: 0.75;
+}
+
+/* Light mode QA badge overrides */
+[data-theme="light"] .ai-qa-badge.pass    { background: #d1fae5; color: #065f46; }
+[data-theme="light"] .ai-qa-badge.fail    { background: #fee2e2; color: #991b1b; }
+[data-theme="light"] .ai-qa-badge.pending { background: #fef9c3; color: #854d0e; }
+
+/* Rejected overlay — shown on critically failed cards */
+.ai-qa-rejected-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.62);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.ai-qa-rejected-overlay span {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #f87171;
+  background: rgba(0,0,0,0.7);
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  border: 1.5px solid rgba(248,113,113,0.5);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Dimmed card state for critically rejected images */
+.ai-result-card.qa-rejected {
+  opacity: 0.72;
+}
+
+.ai-result-card.qa-rejected .ai-result-img {
+  filter: grayscale(0.4);
+}
+
+/* Action badge: pending/QA-running state */
+.ai-action-badge.pending {
+  background: rgba(251,191,36,0.12);
+  color: #fbbf24;
+  border-color: rgba(251,191,36,0.3);
 }
 
 /* Mobile */

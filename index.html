@@ -389,12 +389,12 @@
       <p class="section-eyebrow">Pick your use case</p>
       <h2 class="section-heading">What are you making today?</h2>
       <div class="category-grid">
-        <button class="category-btn" onclick="filterByCategory('work')" aria-label="Work designs">Work</button>
-        <button class="category-btn" onclick="filterByCategory('school')" aria-label="School designs">School</button>
-        <button class="category-btn" onclick="filterByCategory('events')" aria-label="Event designs">Events</button>
-        <button class="category-btn" onclick="filterByCategory('sports')" aria-label="Sports designs">Sports</button>
-        <button class="category-btn" onclick="filterByCategory('causes')" aria-label="Causes designs">Causes</button>
-        <button class="category-btn" onclick="filterByCategory('business')" aria-label="Business designs">Business</button>
+        <button class="category-btn" onclick="openAiGenWithPrompt('professional work shirt design')" aria-label="Work designs">Work</button>
+        <button class="category-btn" onclick="openAiGenWithPrompt('school spirit shirt design')" aria-label="School designs">School</button>
+        <button class="category-btn" onclick="openAiGenWithPrompt('event group shirt design')" aria-label="Event designs">Events</button>
+        <button class="category-btn" onclick="openAiGenWithPrompt('sports team shirt bold graphic')" aria-label="Sports designs">Sports</button>
+        <button class="category-btn" onclick="openAiGenWithPrompt('cause awareness shirt design')" aria-label="Causes designs">Causes</button>
+        <button class="category-btn" onclick="openAiGenWithPrompt('business logo shirt design')" aria-label="Business designs">Business</button>
       </div>
     </div>
   </section>
@@ -464,9 +464,8 @@
     </div>
   </section>
 
-  <!-- Featured Drop Countdown -->
-  <!-- To enable: set featuredDrop:true on a product in products.json and update FEATURED_DROP in app.js -->
-  <section class="countdown-section" id="countdown-section" style="display:none" aria-label="Featured drop countdown">
+  <!-- Featured Drop Countdown — disabled (no real inventory) -->
+  <section class="countdown-section" id="countdown-section" style="display:none" aria-hidden="true">
     <div class="container">
       <div class="countdown-inner">
         <div class="countdown-text">
@@ -488,8 +487,8 @@
     </div>
   </section>
 
-  <!-- Filters Bar -->
-  <div class="filters-bar" role="search" aria-label="Filter products">
+  <!-- Filters Bar — hidden (AI-first flow, no stock catalog) -->
+  <div class="filters-bar" role="search" aria-label="Filter products" style="display:none" aria-hidden="true">
     <div class="container">
       <div class="filters-inner">
 
@@ -527,8 +526,8 @@
     </div>
   </div>
 
-  <!-- Product Grid -->
-  <div class="container">
+  <!-- Product Grid — hidden (AI-first flow, no stock catalog) -->
+  <div class="container" style="display:none" aria-hidden="true">
     <p id="results-info" class="results-info" aria-live="polite" aria-atomic="true"></p>
     <div id="product-grid" class="product-grid" role="list" aria-label="Products"></div>
   </div>
@@ -1124,6 +1123,18 @@
       </div>
     </div>
 
+    <!-- Fix 5: QA mode selector — shown above prompt so user sets intent first -->
+    <div class="ai-making-row">
+      <label class="ai-making-label" for="ai-qa-mode-top">What are you making?</label>
+      <select id="ai-qa-mode-top" class="ai-qa-mode-picker ai-qa-mode-top"
+              aria-label="What are you making?"
+              onchange="ppSetQaMode(this.value); const p=document.getElementById('ai-qa-mode-picker'); if(p) p.value=this.value;">
+        <option value="sticker">&#127991; Sticker</option>
+        <option value="shirt"  >&#128089; Shirt</option>
+        <option value="logo"   >&#11835; Logo</option>
+      </select>
+    </div>
+
     <!-- Prompt row -->
     <div class="ai-gen-prompt-row">
       <input
@@ -1148,13 +1159,15 @@
     <div id="ai-clean-indicator" class="ai-clean-indicator" style="display:none" aria-live="polite"></div>
 
     <!-- Quick prompt chips -->
-    <div class="ai-quick-prompts" aria-label="Quick prompt ideas">
-      <button class="ai-chip" onclick="aiQuickPrompt('Autism Awareness shirt with colorful puzzle pieces')">Autism Awareness</button>
-      <button class="ai-chip" onclick="aiQuickPrompt('funny work shirt with bold humorous text')">Funny Work Shirt</button>
-      <button class="ai-chip" onclick="aiQuickPrompt('family reunion shirt matching design with year')">Family Reunion</button>
-      <button class="ai-chip" onclick="aiQuickPrompt('bold team logo sports graphic design')">Team Logo</button>
-      <button class="ai-chip" onclick="aiQuickPrompt('clean minimal text-only design no graphics')">Minimal Clean</button>
-      <button class="ai-chip" onclick="aiQuickPrompt('birthday shirt with festive cake and name')">Birthday Shirt</button>
+    <div class="ai-quick-prompts" aria-label="Quick start ideas">
+      <span class="ai-quick-label">Quick start:</span>
+      <button class="ai-chip" onclick="aiQuickPrompt('fierce lion logo minimal bold')">🦁 Lion Logo</button>
+      <button class="ai-chip" onclick="aiQuickPrompt('Best Mom ever floral heart design')">❤ Best Mom</button>
+      <button class="ai-chip" onclick="aiQuickPrompt('cool skull graphic bold vintage style')">💀 Skull</button>
+      <button class="ai-chip" onclick="aiQuickPrompt('Class of 2025 graduation design bold')">🎓 Class of 2025</button>
+      <button class="ai-chip" onclick="aiQuickPrompt('funny cat meme humor bold graphic')">😂 Funny Cat</button>
+      <button class="ai-chip" onclick="aiQuickPrompt('family reunion shirt matching design with year')">👨‍👩‍👧 Family Reunion</button>
+      <button class="ai-chip" onclick="aiQuickPrompt('bold team logo sports graphic design')">⚡ Team Logo</button>
     </div>
 
     <!-- Message box (errors / info) -->
@@ -1312,6 +1325,16 @@
           <label class="ai-dpi-label" for="ai-size-picker">Print size</label>
           <select id="ai-size-picker" class="ai-size-picker" aria-label="Select print size"></select>
         </div>
+        <div class="ai-dpi-panel-row">
+          <label class="ai-dpi-label" for="ai-qa-mode-picker">QA mode</label>
+          <select id="ai-qa-mode-picker" class="ai-qa-mode-picker"
+                  aria-label="Select QA strictness mode"
+                  onchange="ppSetQaMode(this.value)">
+            <option value="sticker">&#127991; Sticker &mdash; strict</option>
+            <option value="shirt"  >&#128089; Shirt &mdash; medium</option>
+            <option value="logo"   >&#11835; Logo &mdash; very strict</option>
+          </select>
+        </div>
         <div class="ai-dpi-readout">
           <div class="ai-dpi-readout-row">
             <span class="ai-dpi-readout-key">Required</span>
@@ -1334,10 +1357,78 @@
           Save Project
         </button>
       </div>
+
+      <!-- Dopamine loop: improve + variations -->
+      <div id="ai-improve-bar" class="ai-improve-bar" style="display:none">
+        <button class="ai-improve-btn" onclick="aiGenImprove()" aria-label="Make it better">
+          ✦ Make it better
+        </button>
+        <div class="ai-variation-btns" aria-label="Variation options">
+          <button class="ai-var-btn" onclick="aiGenVariation('like-this')" title="More like this">More like this</button>
+          <button class="ai-var-btn" onclick="aiGenVariation('cleaner')" title="Cleaner style">Cleaner</button>
+          <button class="ai-var-btn" onclick="aiGenVariation('bolder')" title="Bolder style">Bolder</button>
+        </div>
+      </div>
+
+      <!-- Near-miss / progression message -->
+      <div id="ai-progression-msg" class="ai-progression-msg" style="display:none" aria-live="polite"></div>
+
+      <!-- Feature 1: Confidence bar (shown when QA passes) -->
+      <div id="ai-confidence-bar" class="ai-confidence-bar" style="display:none" aria-live="polite">
+        <span class="ai-cb-icon">✅</span>
+        <div class="ai-cb-text">
+          <strong>Print Ready</strong>
+          <span>Crisp &bull; Centered &bull; Clean &bull; This will print sharp.</span>
+        </div>
+      </div>
+
+      <!-- Feature 2: Mockup preview toggle -->
+      <div id="ai-mockup-row" class="ai-mockup-row" style="display:none">
+        <span class="ai-mockup-label">Preview on:</span>
+        <button class="ai-mockup-btn active" data-mockup="shirt"  onclick="aiMockupPreview('shirt')">👕 Shirt</button>
+        <button class="ai-mockup-btn"        data-mockup="sticker" onclick="aiMockupPreview('sticker')">🏷️ Sticker</button>
+        <button class="ai-mockup-btn"        data-mockup="none"   onclick="aiMockupPreview('none')">Plain</button>
+      </div>
+      <!-- Mockup canvas -->
+      <div id="ai-mockup-stage" class="ai-mockup-stage" style="display:none">
+        <canvas id="ai-mockup-canvas" class="ai-mockup-canvas" width="340" height="340" aria-label="Mockup preview"></canvas>
+        <p class="ai-mockup-note" id="ai-mockup-note"></p>
+      </div>
+
+      <!-- Feature 3: Compare mode (A vs B) -->
+      <div id="ai-compare-row" class="ai-compare-row" style="display:none">
+        <span class="ai-compare-label">Compare:</span>
+        <div class="ai-compare-btns" id="ai-compare-btns" role="group" aria-label="Compare designs"></div>
+      </div>
+
+      <!-- Feature 5 + 9: Price strip + trust badge -->
+      <div id="ai-price-strip" class="ai-price-strip" style="display:none">
+        <div class="ai-price-left">
+          <span class="ai-price-from">From</span>
+          <span class="ai-price-num" id="ai-price-num">$12.99</span>
+          <span class="ai-price-unit">per shirt</span>
+        </div>
+        <div class="ai-trust-badge">
+          <span class="ai-trust-icon">🏪</span>
+          <span>Printed by real shop &bull; Quality checked before production</span>
+        </div>
+      </div>
+
       <div class="ai-action-btns">
         <button id="ai-upscale-btn" class="btn btn-secondary" style="display:none"
                 aria-label="Upscale image for print quality">
           ⬆ Upscale for Print
+        </button>
+        <!-- Fix 1: Single Fix Design CTA replaces disabled buttons when blocked -->
+        <button id="ai-fix-design-btn" class="btn btn-neon" style="display:none"
+                aria-label="Fix design quality">
+          ⬆ Fix Design
+        </button>
+        <!-- Feature 10: Primary CTA is "Send to Print" not "Add to Cart" -->
+        <button id="ai-send-to-print-btn" class="btn btn-neon ai-send-to-print" style="display:none"
+                aria-label="Send design to print shop"
+                onclick="aiSendToPrint()">
+          🚀 Send to Print
         </button>
         <button id="ai-to-sticker-btn" class="btn btn-primary"
                 aria-label="Send design to Sticker Lab">
@@ -1348,11 +1439,33 @@
           👕 Use in Design Lab
         </button>
       </div>
+
+      <!-- Continue confidence toast -->
+      <div id="ai-confidence-toast" class="ai-confidence-toast" style="display:none" aria-live="polite">
+        ✦ This will print clean and sharp.
+      </div>
+
+      <!-- Feature 13: Final confirmation overlay (shown just before redirect) -->
+      <div id="ai-final-confirm" class="ai-final-confirm" style="display:none" role="dialog" aria-modal="true" aria-label="Sending to print">
+        <div class="ai-final-inner">
+          <div class="ai-final-icon">🚀</div>
+          <p class="ai-final-heading">Your design is ready.</p>
+          <p class="ai-final-sub">Printing next.</p>
+          <div class="ai-final-bar"><div class="ai-final-bar-fill" id="ai-final-bar-fill"></div></div>
+        </div>
+      </div>
     </div>
 
     <!-- Save confirmation toast (inside modal) -->
     <div id="ai-save-toast" class="ai-save-toast" style="display:none" aria-live="polite">
       Saved. Ready when you are.
+    </div>
+
+    <!-- Feature 8: Save lock-in notice (shown when closing with an unsaved design) -->
+    <div id="ai-save-lock" class="ai-save-lock" style="display:none" aria-live="polite">
+      <span class="ai-save-lock-icon">💾</span>
+      <span id="ai-save-lock-text">Your design is saved — come back any time.</span>
+      <button class="ai-save-lock-dismiss" onclick="document.getElementById('ai-save-lock').style.display='none'" aria-label="Dismiss">×</button>
     </div>
 
     <!-- ================================================
@@ -1426,7 +1539,7 @@
       <!-- CTA row -->
       <div class="me-cta-row">
         <button class="btn btn-neon me-order-btn" id="me-order-btn" onclick="meAddToCart()">
-          Lock Design &amp; Order
+          Save Design
         </button>
         <button class="btn btn-ghost-neon me-improve-btn" onclick="meImproveDesign()">
           Try a Better Version
@@ -1513,7 +1626,7 @@
 
 
 <!-- ============================================================
-     PWA INSTALL BANNER
+     PWA INSTALL BANNER (fallback full-width strip)
      ============================================================ -->
 <div id="install-banner" class="install-banner" role="complementary" aria-label="Install app">
   <div class="install-banner-text">
@@ -1524,6 +1637,21 @@
     <button id="install-dismiss" class="btn btn-ghost" aria-label="Dismiss install prompt">Not now</button>
     <button id="install-btn" class="btn btn-primary" aria-label="Install app">Install</button>
   </div>
+</div>
+
+<!-- ============================================================
+     PWA INSTALL CARD (smart, triggered at engagement peak)
+     ============================================================ -->
+<div id="pp-install-card" class="pp-install-card" role="dialog" aria-label="Install PrintPath" aria-live="polite">
+  <button class="pp-install-card-close" id="pp-install-card-dismiss" aria-label="Dismiss">×</button>
+  <div class="pp-install-card-icon">⬡</div>
+  <div class="pp-install-card-body">
+    <strong>Install for faster design</strong>
+    <span>Open instantly from your home screen — no loading, no browser.</span>
+  </div>
+  <button class="pp-install-card-btn" id="pp-install-card-btn" aria-label="Install PrintPath app">
+    📲 Install app
+  </button>
 </div>
 
 
@@ -1544,22 +1672,22 @@
       </div>
 
       <div class="footer-col">
-        <h4>Shop</h4>
+        <h4>Designs</h4>
         <ul>
-          <li><a href="#" onclick="clearFilters(); return false;">All Tees</a></li>
-          <li><a href="#" onclick="clearFilters(); dom.searchInput.value='graphic'; state.searchQuery='graphic'; applyFilters(); return false;">Graphic Tees</a></li>
-          <li><a href="#" onclick="clearFilters(); dom.searchInput.value='oversized'; state.searchQuery='oversized'; applyFilters(); return false;">Oversized</a></li>
-          <li><a href="#" onclick="clearFilters(); dom.searchInput.value='classic'; state.searchQuery='classic'; applyFilters(); return false;">Basics</a></li>
+          <li><a href="#" onclick="openAiGen(); return false;">Create a Design</a></li>
+          <li><a href="#" onclick="openAiGenWithPrompt('team shirts'); return false;">Team Shirts</a></li>
+          <li><a href="#" onclick="openAiGenWithPrompt('event shirts'); return false;">Event Shirts</a></li>
+          <li><a href="#" onclick="openAiGenWithPrompt('business logo shirt'); return false;">Business Shirts</a></li>
         </ul>
       </div>
 
       <div class="footer-col">
         <h4>Help</h4>
         <ul>
-          <li><a href="#">Size Guide</a></li>
-          <li><a href="#">Shipping Info</a></li>
-          <li><a href="#">Returns</a></li>
-          <li><a href="#">Contact Us</a></li>
+          <li><a href="mailto:hello@printpath.co" aria-label="Contact us">Contact Us</a></li>
+          <li><span style="color:var(--text-muted); font-size:0.85rem; cursor:default;">Size Guide <em style="opacity:0.5;">(coming soon)</em></span></li>
+          <li><span style="color:var(--text-muted); font-size:0.85rem; cursor:default;">Shipping Info <em style="opacity:0.5;">(coming soon)</em></span></li>
+          <li><span style="color:var(--text-muted); font-size:0.85rem; cursor:default;">Returns <em style="opacity:0.5;">(coming soon)</em></span></li>
         </ul>
       </div>
 

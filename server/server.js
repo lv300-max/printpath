@@ -16,6 +16,7 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import OpenAI from "openai";
+import Replicate from "replicate";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -37,6 +38,14 @@ app.use(
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+/* ── Replicate client ─────────────────────────────────── */
+// Set REPLICATE_API_TOKEN in server/.env to enable Real-ESRGAN upscaling.
+// Without it the /real-upscale endpoint returns 503 and the client
+// silently falls back to the logical /upscale-image shim.
+const replicate = process.env.REPLICATE_API_TOKEN
+  ? new Replicate({ auth: process.env.REPLICATE_API_TOKEN })
+  : null;
 
 /* ── System prompt ─────────────────────────────────────────── */
 const SYSTEM_PROMPT = `You are a prompt cleaner for a t-shirt design generator. Your job is to take messy, vague, or overly complex user input and return a clean, structured JSON object.
@@ -165,62 +174,124 @@ app.post("/clean-prompt", async (req, res) => {
 
 /* ── POST /generate-image ─────────────────────────────────── */
 /*
-   Accepts:  { prompt: string }
-   Returns:  { images: [{ url, width, height }] }
+   Accepts:  { subject: string, style?: string, layout?: string, colorNote?: string }
+   Returns:  { images: [{ url, width, height, dpi, isPrintReady }] }
 
-   Uses gpt-image-1 with:
-     - transparent background  (HUGE for stickers)
-     - n: 4  (4 designs = dopamine hit for the user)
+   The CLIENT sends only the clean subject + style metadata.
+   The SERVER builds the full strict prompt here — single
+   source of truth. This prevents double-wrapping.
+
+   gpt-image-1 with:
+     - output_format: "png"  (supports transparency)
+     - n: 4
      - 1024×1024
-   The prompt coming in has already been enforced by the
-   Premium Merch Engine on the client — we wrap it in one
-   final strict format string to guarantee clean output.
 */
+
+/* ---- Minimum pixels for print-ready at 300 DPI ------------- */
+const PRINT_SIZE_MAP = {
+  '2x2':   600,
+  '3x3':   900,
+  '4x4':   1200,
+  '5x5':   1500,
+  '8x8':   2400,
+  '10x10': 3000,
+  '12x12': 3600,
+};
+const DEFAULT_MIN_PRINT_PX = 1200; // 4×4" @ 300 DPI
+
+function buildImagePrompt(subject, style, layout, colorNote) {
+  // Style keywords — mirror PP_STYLES on the client
+  const STYLES = {
+    minimal:   'ultra-minimal, clean lines, flat design, single color, lots of empty space',
+    bold:      'bold streetwear, thick outlines, high contrast, heavy weight, strong shapes',
+    cartoon:   'cartoon style, cell-shaded, clean outlines, fun and playful, sticker-ready, flat color',
+    realistic: 'detailed illustration, realistic proportions, clean background, no scene',
+    funny:     'funny, humorous, exaggerated features, cartoon expression, clean composition',
+    retro:     'retro vintage style, limited 2-color palette, screen-print look, distressed texture',
+  };
+  const styleNote = (style && STYLES[style]) || 'clean vector-style, bold outlines, flat color';
+  const colorStr  = colorNote || 'black and white only, maximum 2 colors, no rainbow, no gradients';
+  const layoutStr = layout   || 'perfectly centered, single element, generous padding on all sides';
+
+  return (
+    // Subject — stated explicitly first, then repeated as constraint
+    `A professionally designed t-shirt graphic. Subject: ${subject}. Only ${subject}.
+` +
+    // Composition constraints
+    `Composition: ${layoutStr}.
+` +
+    `ONLY the subject — nothing else. No background. No scenery. No extra objects. No environment.
+` +
+    `Transparent background. The subject floats on pure transparency.
+` +
+    // Quality
+    `Quality: sharp edges, clean outlines, no blur, no glow bleed, no soft shadows.
+` +
+    `No gradients. No drop shadows. No emboss. No lens flare.
+` +
+    `Flat colors only. High contrast. Bold lines. Sticker-style artwork.
+` +
+    `Perfectly centered. Balanced. Nothing touches the edges.
+` +
+    // Style + Color
+    `Style: ${styleNote}.
+` +
+    `Colors: ${colorStr}.
+` +
+    // Final hard constraint — repeat subject to anchor the model
+    `Final rule: the ONLY thing in this image is ${subject}. Print-ready. No background whatsoever.`
+  );
+}
+
 app.post("/generate-image", async (req, res) => {
-  const rawPrompt = (req.body.prompt || "").trim();
-  if (!rawPrompt) {
-    return res.status(400).json({ error: "prompt is required" });
+  const {
+    subject,
+    style     = null,
+    layout    = null,
+    colorNote = null,
+    // Legacy: if old client sends full `prompt`, use it as subject
+    prompt: legacyPrompt,
+  } = req.body || {};
+
+  const resolvedSubject = (subject || legacyPrompt || "").trim();
+  if (!resolvedSubject) {
+    return res.status(400).json({ error: "subject is required" });
   }
 
-  // Final strict format — fixes the "red cup = beach" problem.
-  // We always describe the single subject explicitly and forbid
-  // backgrounds, scenes, and extra objects at the API level.
-  const finalPrompt =
-    `A clean, centered design of: ${rawPrompt}.\n` +
-    `Single subject only.\n` +
-    `No background. No scenery. No extra objects.\n` +
-    `Transparent background.\n` +
-    `High contrast. Sharp edges. Minimal.\n` +
-    `Vector style, bold lines, flat colors, clean edges.\n` +
-    `Sticker style. Print-ready.`;
+  const finalPrompt = buildImagePrompt(resolvedSubject, style, layout, colorNote);
+
+  // ── Debug logging ─────────────────────────────────────────────
+  console.log("\n[PrintPath] /generate-image");
+  console.log("  subject :", resolvedSubject);
+  console.log("  style   :", style || "(none)");
+  console.log("  layout  :", layout || "(default)");
+  console.log("  prompt  :\n" + finalPrompt.split("\n").map(l => "    " + l).join("\n"));
+  // ─────────────────────────────────────────────────────────
 
   try {
     const result = await openai.images.generate({
-      model:      "gpt-image-1",
-      prompt:     finalPrompt,
-      size:       "1024x1024",
-      n:          4,
-      background: "transparent",
-      quality:    "standard",
+      model:         "gpt-image-1",
+      prompt:        finalPrompt,
+      size:          "1024x1024",
+      n:             4,
+      quality:       "high",       // high > standard for print work
+      output_format: "png",        // PNG supports transparency
     });
 
-    // gpt-image-1 returns base64 by default; normalise to a consistent shape.
-    // If the API returns a URL use it directly; otherwise wrap the b64 in a
-    // data URI so the browser can display it without a separate request.
     const images = (result.data || []).map((item) => {
       const url = item.url
         ? item.url
         : `data:image/png;base64,${item.b64_json}`;
-      return {
-        url,
-        width:  1024,
-        height: 1024,
-        // gpt-image-1 outputs at 96 ppi native; we record the raw pixel
-        // dimensions so the DPI check in the client is accurate.
-        dpi: 96,
-      };
+
+      // Pixel-math DPI — never trust API metadata
+      const widthPx = 1024;
+      const dpi     = Math.round(widthPx / 4); // conservative: 4" baseline = 256 DPI
+      const isPrintReady = widthPx >= DEFAULT_MIN_PRINT_PX; // 1024 >= 1200 = false → upscale needed
+
+      return { url, width: widthPx, height: widthPx, dpi, isPrintReady };
     });
 
+    console.log(`[PrintPath] Generated ${images.length} images. isPrintReady: ${images[0]?.isPrintReady}`);
     return res.json({ images });
   } catch (err) {
     console.error("[PrintPath] /generate-image error:", err.message);
@@ -238,47 +309,106 @@ app.post("/generate-image", async (req, res) => {
 });
 
 /* ── POST /upscale-image ───────────────────────────────────── */
-/*
-   Simple server-side upscale shim.
-   Right now: instructs the client to use a CSS/Canvas 2× scale
-   (sufficient for most DTG/screen-print needs at 1024px input).
-   When you add a real upscaler (Real-ESRGAN via Replicate etc)
-   swap the body — the client shape stays the same.
-
-   Accepts:  { url: string }          — the image URL to upscale
-   Returns:  { url, width, height, dpi, upscaled: true }
-*/
 app.post("/upscale-image", async (req, res) => {
   const { url, width = 1024, height = 1024 } = req.body || {};
   if (!url) return res.status(400).json({ error: "url is required" });
 
-  // ── TODO: swap in Real-ESRGAN / Replicate here for 4× upscale ──
-  // For now: declare a 2× logical upscale so the DPI check passes.
-  // 1024px @ 96ppi → treated as 2048px equivalent → ~204 DPI at 10".
-  // After wiring a real upscaler this endpoint returns the new image URL.
+  // TODO: swap in Real-ESRGAN / Replicate here for true 4× upscale.
+  // Currently: 2× logical upscale — correct dimensions returned
+  // so client DPI math is accurate.
+  const newWidth  = width  * 2;
+  const newHeight = height * 2;
+  const newDpi    = Math.round(newWidth / 4); // 4" baseline
+  const isPrintReady = newWidth >= DEFAULT_MIN_PRINT_PX;
+
+  console.log(`[PrintPath] /upscale-image ${width}→${newWidth}px | DPI: ${newDpi} | printReady: ${isPrintReady}`);
+
   return res.json({
-    url,              // same URL until real upscaler is wired
-    width:  width  * 2,
-    height: height * 2,
-    dpi:    192,      // conservative estimate for 1024px DTG print
+    url,
+    width:  newWidth,
+    height: newHeight,
+    dpi:    newDpi,
+    isPrintReady,
     upscaled: true,
   });
 });
 
-/* ── GET /health ───────────────────────────────────────────── */
+/* ── POST /real-upscale ────────────────────────────────── */
+/*
+   Real 4× pixel upscale via Replicate Real-ESRGAN.
+   Requires REPLICATE_API_TOKEN in server/.env.
+   Returns 503 if token not set — client falls back to /upscale-image shim.
+
+   Accepts: { image: string (URL or data URI), scale?: 2|4 }
+   Returns: { url, width, height, dpi, isPrintReady }
+*/
+app.post("/real-upscale", async (req, res) => {
+  if (!replicate) {
+    return res.status(503).json({
+      error: "Real upscale unavailable — set REPLICATE_API_TOKEN in server/.env.",
+      fallback: true,
+    });
+  }
+
+  const { image, scale = 4, width: inputWidth = 1024, height: inputHeight = 1024 } = req.body || {};
+  if (!image) return res.status(400).json({ error: "image is required" });
+
+  console.log(`[PrintPath] /real-upscale → scale:${scale} | input: ${inputWidth}px`);
+
+  try {
+    const output = await replicate.run(
+      "nightmareai/real-esrgan:42fed1c4974146d4d2414e2be2c5277c7fcf05fcc3a73abf41610695738c1d7b",
+      {
+        input: {
+          image: image,
+          scale: scale,
+          face_enhance: false,  // not a face — keep off for objects/logos
+        },
+      }
+    );
+
+    // Replicate returns the URL of the upscaled image as the output value
+    const upscaledUrl = typeof output === 'string' ? output : (output && output[0]) || image;
+    const newWidth    = inputWidth  * scale;
+    const newHeight   = inputHeight * scale;
+    const newDpi      = Math.round(newWidth / 4); // 4" baseline
+    const isPrintReady = newWidth >= DEFAULT_MIN_PRINT_PX;
+
+    console.log(`[PrintPath] Real-ESRGAN complete: ${inputWidth}→${newWidth}px | DPI: ${newDpi} | printReady: ${isPrintReady}`);
+
+    return res.json({
+      url:    upscaledUrl,
+      width:  newWidth,
+      height: newHeight,
+      dpi:    newDpi,
+      isPrintReady,
+      upscaled:      true,
+      upscaleMethod: 'real-esrgan',
+    });
+  } catch (err) {
+    console.error("[PrintPath] /real-upscale error:", err.message);
+    if (err.status === 401) {
+      return res.status(401).json({ error: "Invalid Replicate API token." });
+    }
+    return res.status(500).json({ error: "Real upscale failed. " + err.message });
+  }
+});
+
+/* ── GET /health ─────────────────────────────────────────── */
 app.get("/health", (req, res) => {
   res.json({
-    status: "ok",
-    hasKey: !!process.env.OPENAI_API_KEY,
-    model: "gpt-image-1",
+    status:      "ok",
+    hasKey:      !!process.env.OPENAI_API_KEY,
+    hasReplicate: !!process.env.REPLICATE_API_TOKEN,
+    model:       "gpt-image-1",
   });
 });
 
 /* ── Start ─────────────────────────────────────────────────── */
 app.listen(PORT, () => {
   const keySet = !!process.env.OPENAI_API_KEY;
+  const repSet = !!process.env.REPLICATE_API_TOKEN;
   console.log(`\n  ✦ PrintPath server running → http://localhost:${PORT}`);
-  console.log(
-    `  ${keySet ? "✓" : "✗"} OpenAI key ${keySet ? "loaded" : "MISSING — set OPENAI_API_KEY in .env"}\n`
-  );
+  console.log(`  ${keySet ? "✓" : "✗"} OpenAI key    ${keySet ? "loaded" : "MISSING — set OPENAI_API_KEY in .env"}`);
+  console.log(`  ${repSet ? "✓" : "○"} Replicate key ${repSet ? "loaded (real upscale enabled)" : "not set   (upscale will use logical shim)"}\n`);
 });

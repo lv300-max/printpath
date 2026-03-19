@@ -40,7 +40,7 @@ const HYPE_MESSAGES = [
   { icon: '⚡', text: 'AI-powered designs — print-ready in seconds' },
   { icon: '🎯', text: '300 DPI guaranteed on every design' },
   { icon: '🚚', text: 'Free shipping on orders over $75' },
-  { icon: '🔥', text: 'New drops every Friday — don\'t sleep on it' },
+  { icon: '✦', text: 'New designs every time you create' },
   { icon: '↩️', text: '30-day hassle-free returns' },
   { icon: '⬡', text: 'PrintPath: Design it. We make it print-perfect.' },
   { icon: '🔒', text: 'Secure checkout powered by Stripe' },
@@ -932,10 +932,12 @@ async function triggerInstall() {
   }
   state.deferredInstallPrompt = null;
   dom.installBanner.classList.remove('visible');
+  ppHideInstallCard();
 }
 
 function dismissInstallBanner() {
   dom.installBanner.classList.remove('visible');
+  ppHideInstallCard();
   localStorage.setItem('td-install-dismissed', '1');
 }
 
@@ -1111,35 +1113,9 @@ function initHypeBanner() {
    FEATURED DROP COUNTDOWN
    ==================================================== */
 function initCountdown() {
-  const product = state.products.find(p => p.id === FEATURED_DROP.productId && p.featuredDrop);
-  if (!product || !FEATURED_DROP.dropDate) return;
-
-  const target = new Date(FEATURED_DROP.dropDate).getTime();
-  if (isNaN(target)) return;
-
-  if (dom.cdProductName) dom.cdProductName.textContent = product.name;
-
-  function tick() {
-    const diff = target - Date.now();
-    if (diff <= 0) {
-      if (dom.cdProductDesc) dom.cdProductDesc.textContent = '🔥 Drop is live now!';
-      ['cdDays','cdHours','cdMins','cdSecs'].forEach(k => { if (dom[k]) dom[k].textContent = '00'; });
-      clearInterval(state.countdownInterval);
-      return;
-    }
-    const days  = Math.floor(diff / 86400000);
-    const hours = Math.floor((diff % 86400000) / 3600000);
-    const mins  = Math.floor((diff % 3600000)  / 60000);
-    const secs  = Math.floor((diff % 60000)    / 1000);
-    if (dom.cdDays)  dom.cdDays.textContent  = String(days).padStart(2, '0');
-    if (dom.cdHours) dom.cdHours.textContent = String(hours).padStart(2, '0');
-    if (dom.cdMins)  dom.cdMins.textContent  = String(mins).padStart(2, '0');
-    if (dom.cdSecs)  dom.cdSecs.textContent  = String(secs).padStart(2, '0');
-  }
-
-  if (dom.countdownSection) dom.countdownSection.style.display = 'block';
-  tick();
-  state.countdownInterval = setInterval(tick, 1000);
+  // Countdown section is disabled — no real inventory to back it
+  // To re-enable: set a real dropDate and a product with featuredDrop:true in products.json
+  if (dom.countdownSection) dom.countdownSection.style.display = 'none';
 }
 
 /* Scroll to featured drop products */
@@ -1262,6 +1238,12 @@ function bindEvents() {
   // PWA install
   dom.installBtn.addEventListener('click', triggerInstall);
   dom.installDismiss.addEventListener('click', dismissInstallBanner);
+
+  // Premium install card buttons
+  const cardBtn     = document.getElementById('pp-install-card-btn');
+  const cardDismiss = document.getElementById('pp-install-card-dismiss');
+  if (cardBtn)     cardBtn.addEventListener('click', triggerInstall);
+  if (cardDismiss) cardDismiss.addEventListener('click', dismissInstallBanner);
 
   // Keyboard: close panels on Escape (Sticker Lab → Design Lab → checkout → cart → product)
   document.addEventListener('keydown', e => {

@@ -23,9 +23,10 @@ const AI_GEN_CONFIG = {
   apiOutputPx:  1024,
 
   // Backend endpoints — relative paths work on Netlify + locally via netlify dev
-  serverUrl:       '',
-  generatePath:    '/generate-image',
-  upscalePath:     '/upscale-image',
+  serverUrl:        '',
+  generatePath:     '/generate-image',
+  upscalePath:      '/upscale-image',       // logical shim (fallback)
+  realUpscalePath:  '/real-upscale',        // Replicate Real-ESRGAN (4× real pixels)
 
   // Print size presets — inches × 300 = required pixels
   printSizes: [
@@ -37,6 +38,98 @@ const AI_GEN_CONFIG = {
     { label: '12 × 12" — oversized',          inches: 12 },
   ],
   defaultSizeIdx: 1,  // 4" default — good for gpt-image-1's 1024px output
+
+  // Real upscale endpoint (Replicate Real-ESRGAN via server)
+  realUpscalePath: '/real-upscale',
+};
+
+/* ====================================================
+   QA MODE — controls which rule set ppQaInspect() uses
+   ====================================================
+   'sticker' — strict:  transparent background, sharp edges, isolated subject
+   'shirt'   — medium:  more tolerance for filled backgrounds & composition
+   'logo'    — very strict: minimal blobs, tight centering, clean transparency
+
+   Persisted in localStorage under 'pp-qa-mode' so the user's
+   last choice survives page reloads.
+   ==================================================== */
+
+const QA_MODE_KEY     = 'pp-qa-mode';
+const QA_MODE_DEFAULT = 'sticker';
+const QA_MODE_OPTIONS = ['sticker', 'shirt', 'logo'];
+
+// Active mode — read from localStorage on load, falls back to default
+let QA_MODE = (() => {
+  try {
+    const saved = localStorage.getItem(QA_MODE_KEY);
+    return QA_MODE_OPTIONS.includes(saved) ? saved : QA_MODE_DEFAULT;
+  } catch (_) { return QA_MODE_DEFAULT; }
+})();
+
+/** Set QA mode, persist it, and update any open picker UI */
+function ppSetQaMode(mode) {
+  if (!QA_MODE_OPTIONS.includes(mode)) return;
+  QA_MODE = mode;
+  try { localStorage.setItem(QA_MODE_KEY, mode); } catch (_) {}
+  // Sync the pickers (action bar + top selector)
+  const picker = document.getElementById('ai-qa-mode-picker');
+  if (picker && picker.value !== mode) picker.value = mode;
+  const pickerTop = document.getElementById('ai-qa-mode-top');
+  if (pickerTop && pickerTop.value !== mode) pickerTop.value = mode;
+  // If a design is already selected, clear its QA cache and re-inspect
+  if (aiGenState && aiGenState.selected) {
+    delete aiGenState.selected._qa;
+    const idx = (aiGenState.results || []).findIndex(r => r.url === aiGenState.selected.url);
+    if (idx !== -1) delete aiGenState.results[idx]._qa;
+    ppQaInspect(aiGenState.selected, aiGenState.lastPrompt || '').then(qa => {
+      aiGenState.selected._qa = qa;
+      if (idx !== -1) aiGenState.results[idx]._qa = qa;
+      aiGenRenderResults();
+      aiGenShowActionBar(aiGenState.selected);
+    }).catch(() => {});
+  }
+}
+
+const QA_CONFIG = {
+  sticker: {
+    label:            'Sticker QA',
+    transparencyMin:  0.25,   // ≥ 25% transparent pixels required
+    transparencyWarn: 0.45,   // below this = warn (but not critical)
+    clutterMaxZones:  15,     // filled zones ≥ this = background-clutter (critical)
+    clutterWarnRatio: 0.75,   // filled zones ≥ 75% of total = high-clutter
+    centerTolerance:  0.20,   // max centroid offset as fraction of canvas width
+    centerWarn:       0.12,   // warn at 60% of tolerance
+    maxBlobs:         3,      // ≥ this many disconnected blobs = multiple subjects
+    edgeSoftMax:      0.65,   // soft-edge ratio above this = soft-edges (critical-ish)
+    edgeSoftWarn:     0.40,   // warn threshold
+    passScore:        60,     // minimum qaScore to passesQa
+  },
+  shirt: {
+    label:            'Shirt QA',
+    transparencyMin:  0.05,
+    transparencyWarn: 0.20,
+    clutterMaxZones:  16,     // allow fully filled (background is fine on a shirt)
+    clutterWarnRatio: 0.95,
+    centerTolerance:  0.30,
+    centerWarn:       0.18,
+    maxBlobs:         5,
+    edgeSoftMax:      0.80,
+    edgeSoftWarn:     0.60,
+    passScore:        50,
+  },
+  logo: {
+    label:            'Logo QA',
+    transparencyMin:  0.20,
+    transparencyWarn: 0.40,
+    clutterMaxZones:  13,     // stricter — logos must be clean
+    clutterWarnRatio: 0.65,
+    centerTolerance:  0.15,
+    centerWarn:       0.09,
+    maxBlobs:         2,
+    edgeSoftMax:      0.45,
+    edgeSoftWarn:     0.25,
+    passScore:        70,
+  },
 };
 
 /* ====================================================
@@ -369,7 +462,9 @@ function ppWearabilityCheck(analysis) {
 
 /**
  * ppDetectFailure(result, userSubject) — heuristic fail check.
- * Checks for scene keywords in API-returned metadata.
+ * NOTE: gpt-image-1 never returns description/alt/label metadata,
+ * so this always returns false. Real failure detection is now handled
+ * by ppQaInspect() via canvas pixel analysis.
  */
 function ppDetectFailure(result, userSubject) {
   const desc = ((result.description || result.alt || result.label || '') + '').toLowerCase();
@@ -380,6 +475,311 @@ function ppDetectFailure(result, userSubject) {
   ];
   if (!desc) return false;
   return failWords.some(w => desc.includes(w));
+}
+
+/* ====================================================
+   POST-GENERATION IMAGE QA SYSTEM
+   ====================================================
+   ppQaInspect(img, subject) — canvas pixel-analysis QA.
+
+   Runs 5 checks after each image loads:
+
+   1. TRANSPARENCY QUALITY  — alpha channel ratio.
+      Samples a grid of pixels and measures what fraction
+      are fully/mostly transparent.  Low transparent-px
+      ratio → background is filled → bad for stickers.
+
+   2. BACKGROUND CLUTTER   — opaque pixel distribution.
+      Measures how spread opaque pixels are across the
+      canvas.  Very high spread with no clear centroid →
+      likely scenery / filled background.
+
+   3. CENTERING CHECK      — center-of-mass of opaque pixels.
+      Computes the weighted centroid.  Far from canvas
+      center → subject is off-center.
+
+   4. SUBJECT COUNT        — checks prompt text for known
+      multi-subject patterns AND checks whether opaque
+      pixel mass has multiple separated blobs.
+      Also flags subjects connected by "and/with/plus".
+
+   5. EDGE QUALITY         — soft-edge heuristic.
+      Samples the alpha channel near the boundary between
+      opaque and transparent regions.  Many semi-transparent
+      pixels in that zone → blurry/soft edges.
+
+   Returns:
+   {
+     qaScore:   0-100  (100 = perfect),
+     qaIssues:  string[],
+     passesQa:  boolean
+   }
+
+   Result is cached on the img object as img._qa so the
+   canvas work only runs once per image.
+   ================================================== */
+
+/**
+ * ppQaInspect(img, subject) → Promise<{ qaScore, qaIssues, passesQa }>
+ *
+ * @param {{ url:string, widthPx:number, heightPx:number }} img
+ * @param {string} subject — the cleaned subject text (for prompt heuristics)
+ */
+async function ppQaInspect(img, subject) {
+  // Return cached result if we already ran this
+  if (img._qa) return img._qa;
+
+  const cfg    = QA_CONFIG[QA_MODE] || QA_CONFIG.sticker;
+  const issues = [];
+  let score    = 100;
+
+  // ── PROMPT HEURISTICS (no canvas needed) ──────────────────
+  // Check 4a: subject count via text — "X and Y", "X with Y", "X plus Y"
+  const subjectLower = (subject || '').toLowerCase();
+  const multiPattern = /\b(and|with|plus|also|&)\b/;
+  const multiSubjects = multiPattern.test(subjectLower) &&
+    // Allow "bear with sunglasses" — only flag if BOTH sides look like nouns
+    // Simple heuristic: 3+ words total separated by the connector
+    subjectLower.split(multiPattern).filter(p => p.trim().split(/\s+/).length >= 2).length >= 2;
+
+  if (multiSubjects) {
+    issues.push('multiple-subjects-prompt');
+    score -= 20;
+  }
+
+  // ── CANVAS PIXEL ANALYSIS ─────────────────────────────────
+  // Load image into an offscreen canvas, read pixel data.
+  // Skip if the browser can't do this (old browser / cross-origin).
+  let pixelData = null;
+  let W = 0, H = 0;
+
+  try {
+    const bitmap = await createImageBitmap(
+      await fetch(img.url).then(r => r.blob())
+    );
+    W = bitmap.width  || img.widthPx  || 1024;
+    H = bitmap.height || img.heightPx || 1024;
+
+    const canvas = document.createElement('canvas');
+    // Downsample to 128×128 for speed — enough for statistical checks
+    const SAMPLE = 128;
+    canvas.width  = SAMPLE;
+    canvas.height = SAMPLE;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(bitmap, 0, 0, SAMPLE, SAMPLE);
+    bitmap.close();
+
+    pixelData = ctx.getImageData(0, 0, SAMPLE, SAMPLE).data;
+    W = SAMPLE; H = SAMPLE;
+  } catch (e) {
+    // Cross-origin or fetch blocked — cannot run canvas checks, fail safe
+    console.warn('[PrintPath QA] Canvas analysis skipped:', e.message);
+    issues.push('qa-skipped-cors');
+    const qa = {
+      qaScore:  0,
+      qaIssues: issues,
+      passesQa: false,
+      qaMode:   QA_MODE,
+      corsSkipped: true,
+    };
+    img._qa = qa;
+    return qa;
+  }
+
+  // Helper: get RGBA at (x,y) in flat Uint8ClampedArray
+  const px = (x, y) => {
+    const i = (y * W + x) * 4;
+    return { r: pixelData[i], g: pixelData[i+1], b: pixelData[i+2], a: pixelData[i+3] };
+  };
+
+  let totalPx      = W * H;
+  let transparentPx = 0;   // alpha < 20
+  let opaquePx     = 0;    // alpha > 200
+  let semiPx       = 0;    // 20 ≤ alpha ≤ 200
+  let sumX = 0, sumW = 0;  // for centroid
+  let sumY = 0;
+
+  // Also track a 4×4 zone grid for clutter/blob analysis
+  const ZONES = 4;
+  const zoneOpaqueCount = new Array(ZONES * ZONES).fill(0);
+  const zoneW = Math.floor(W / ZONES);
+  const zoneH = Math.floor(H / ZONES);
+
+  // Track edge-adjacent pixels (within 3px of transparent→opaque boundary)
+  let edgeSemiCount = 0;
+  let edgeTotalCount = 0;
+
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const { a } = px(x, y);
+
+      if (a < 20)        transparentPx++;
+      else if (a > 200)  opaquePx++;
+      else               semiPx++;
+
+      // Centroid: weight by opacity
+      if (a > 20) {
+        sumX += x * a;
+        sumY += y * a;
+        sumW += a;
+      }
+
+      // Zone grid (opaque only)
+      if (a > 200) {
+        const zx = Math.min(Math.floor(x / zoneW), ZONES - 1);
+        const zy = Math.min(Math.floor(y / zoneH), ZONES - 1);
+        zoneOpaqueCount[zy * ZONES + zx]++;
+      }
+
+      // Edge quality: find pixels near a transparency boundary
+      if (a > 20 && a < 200) {
+        // Check if any neighbour is very transparent
+        const neighbours = [
+          x > 0     ? px(x-1, y).a : 0,
+          x < W-1   ? px(x+1, y).a : 0,
+          y > 0     ? px(x, y-1).a : 0,
+          y < H-1   ? px(x, y+1).a : 0,
+        ];
+        const nearTransparent = neighbours.some(na => na < 20);
+        if (nearTransparent) {
+          edgeTotalCount++;
+          edgeSemiCount++;
+        }
+      } else if (a > 200) {
+        // Opaque pixel — count it for edge total if near transparent
+        const neighbours = [
+          x > 0     ? px(x-1, y).a : 0,
+          x < W-1   ? px(x+1, y).a : 0,
+          y > 0     ? px(x, y-1).a : 0,
+          y < H-1   ? px(x, y+1).a : 0,
+        ];
+        if (neighbours.some(na => na < 20)) {
+          edgeTotalCount++;
+        }
+      }
+    }
+  }
+
+  const transparencyRatio = transparentPx / totalPx;  // 0–1
+  const opaqueRatio       = opaquePx / totalPx;       // 0–1
+  const semiRatio         = semiPx   / totalPx;       // 0–1
+
+  // ── CHECK 5: TRANSPARENCY QUALITY ─────────────────────────
+  if (transparencyRatio < cfg.transparencyMin) {
+    issues.push('background-not-transparent');
+    score -= 30;
+  } else if (transparencyRatio < cfg.transparencyWarn) {
+    issues.push('low-transparency');
+    score -= 15;
+  }
+
+  // ── CHECK 3: BACKGROUND CLUTTER ───────────────────────────
+  const zoneThreshold = Math.floor(totalPx / (ZONES * ZONES) * 0.10); // 10% of zone
+  const filledZones   = zoneOpaqueCount.filter(c => c > zoneThreshold).length;
+  const maxZones      = ZONES * ZONES; // 16
+
+  if (filledZones >= cfg.clutterMaxZones) {
+    issues.push('background-clutter');
+    score -= 25;
+  } else if (filledZones >= Math.floor(maxZones * cfg.clutterWarnRatio)) {
+    issues.push('high-clutter');
+    score -= 12;
+  }
+
+  // ── CHECK 2: CENTERING ─────────────────────────────────────
+  if (sumW > 0) {
+    const centroidX = sumX / sumW;
+    const centroidY = sumY / sumW;
+    const centerX   = W / 2;
+    const centerY   = H / 2;
+    const maxOffset = W * cfg.centerTolerance;
+    const offsetX   = Math.abs(centroidX - centerX);
+    const offsetY   = Math.abs(centroidY - centerY);
+
+    if (offsetX > maxOffset || offsetY > maxOffset) {
+      issues.push('off-center');
+      score -= 20;
+    } else if (offsetX > maxOffset * (cfg.centerWarn / cfg.centerTolerance) || offsetY > maxOffset * (cfg.centerWarn / cfg.centerTolerance)) {
+      issues.push('slightly-off-center');
+      score -= 8;
+    }
+  }
+
+  // ── CHECK 1: SUBJECT COUNT (blob analysis) ─────────────────
+  // Use the zone grid: check for multiple separated clusters of opaque zones
+  // that are not adjacent to each other.
+  // A single centered subject → one cluster of filled zones.
+  // Multiple disconnected filled-zone islands → multiple subjects.
+  const filledZoneSet = new Set(
+    zoneOpaqueCount.map((c, i) => c > zoneThreshold ? i : -1).filter(i => i >= 0)
+  );
+  // BFS to find connected components in the zone grid
+  const visited = new Set();
+  let blobCount = 0;
+  for (const startZone of filledZoneSet) {
+    if (visited.has(startZone)) continue;
+    blobCount++;
+    // BFS
+    const queue = [startZone];
+    while (queue.length) {
+      const z = queue.shift();
+      if (visited.has(z)) continue;
+      visited.add(z);
+      const zx = z % ZONES;
+      const zy = Math.floor(z / ZONES);
+      // 4-connected neighbours
+      const neighbours = [
+        zy > 0        ? (zy-1)*ZONES + zx : -1,
+        zy < ZONES-1  ? (zy+1)*ZONES + zx : -1,
+        zx > 0        ? zy*ZONES + (zx-1) : -1,
+        zx < ZONES-1  ? zy*ZONES + (zx+1) : -1,
+      ];
+      for (const n of neighbours) {
+        if (n >= 0 && filledZoneSet.has(n) && !visited.has(n)) queue.push(n);
+      }
+    }
+  }
+
+  if (blobCount >= cfg.maxBlobs + 1) {
+    issues.push('multiple-subjects-detected');
+    score -= 25;
+  } else if (blobCount >= cfg.maxBlobs && !multiSubjects) {
+    issues.push('possible-multiple-subjects');
+    score -= 10;
+  }
+
+  // ── CHECK 4b: EDGE QUALITY ─────────────────────────────────
+  if (edgeTotalCount > 0) {
+    const softEdgeRatio = edgeSemiCount / edgeTotalCount;
+    if (softEdgeRatio > cfg.edgeSoftMax) {
+      issues.push('soft-edges');
+      score -= 20;
+    } else if (softEdgeRatio > cfg.edgeSoftWarn) {
+      issues.push('slightly-soft-edges');
+      score -= 8;
+    }
+  }
+
+  score = Math.max(0, Math.min(100, score));
+  const criticalIssues = ['background-not-transparent', 'background-clutter', 'multiple-subjects-detected'];
+  const hasCritical    = issues.some(i => criticalIssues.includes(i));
+  const passesQa       = score >= cfg.passScore && !hasCritical;
+
+  const qa = { qaMode: QA_MODE, qaScore: score, qaIssues: issues, passesQa };
+  img._qa = qa; // cache on the img object
+
+  // Debug logging
+  console.log(
+    `[PrintPath QA:${QA_MODE}] ${img.widthPx}×${img.heightPx}px` +
+    ` | score: ${score}/${cfg.passScore} (pass threshold)` +
+    ` | pass: ${passesQa}` +
+    ` | issues: [${issues.join(', ') || 'none'}]` +
+    ` | transparent: ${(transparencyRatio * 100).toFixed(1)}% (min ${(cfg.transparencyMin*100).toFixed(0)}%)` +
+    ` | blobs: ${blobCount} (max ${cfg.maxBlobs})` +
+    ` | softEdge: ${edgeTotalCount > 0 ? ((edgeSemiCount/edgeTotalCount)*100).toFixed(1) : '—'}% (max ${(cfg.edgeSoftMax*100).toFixed(0)}%)`
+  );
+
+  return qa;
 }
 
 /**
@@ -447,15 +847,18 @@ const aiGenState = {
  * PLACEHOLDER: returns 4 royalty-free placeholder image URLs after a fake delay.
  * Replace the function body with a real API call when ready.
  */
-async function generateDesign(prompt, negativePrompt) {
+async function generateDesign(subject, style, layout, colorNote) {
   const endpoint = AI_GEN_CONFIG.serverUrl + AI_GEN_CONFIG.generatePath;
+
+  // Debug: log what we're sending
+  console.log('[PrintPath] generateDesign → subject:', subject, '| style:', style, '| layout:', layout);
 
   let res;
   try {
     res = await fetch(endpoint, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ prompt }),
+      body:    JSON.stringify({ subject, style, layout, colorNote }),
     });
   } catch (networkErr) {
     throw new Error('Cannot reach the PrintPath server. Is it running? (node server/server.js)');
@@ -475,11 +878,12 @@ async function generateDesign(prompt, negativePrompt) {
   if (!images.length) throw new Error('No images returned. Try a different description.');
 
   return images.map(img => ({
-    url:      img.url,
-    prompt,
-    dpi:      img.dpi || AI_GEN_CONFIG.apiOutputDpi,
-    widthPx:  img.width  || AI_GEN_CONFIG.apiOutputPx,
-    heightPx: img.height || AI_GEN_CONFIG.apiOutputPx,
+    url:          img.url,
+    prompt:       subject,
+    dpi:          img.dpi      || AI_GEN_CONFIG.apiOutputDpi,
+    widthPx:      img.width    || AI_GEN_CONFIG.apiOutputPx,
+    heightPx:     img.height   || AI_GEN_CONFIG.apiOutputPx,
+    isPrintReady: img.isPrintReady || false,
   }));
 }
 
@@ -502,35 +906,78 @@ async function generateDesign(prompt, negativePrompt) {
  * PLACEHOLDER: simulates a 4× upscale. Replace with a real API call.
  */
 async function upscaleImage(imageObj) {
-  const endpoint = AI_GEN_CONFIG.serverUrl + AI_GEN_CONFIG.upscalePath;
+  // Try the real Replicate upscaler first; fall back to the logical shim
+  // if the token isn't configured or the endpoint errors.
+  const realEndpoint = AI_GEN_CONFIG.serverUrl + AI_GEN_CONFIG.realUpscalePath;
+  const shimEndpoint = AI_GEN_CONFIG.serverUrl + AI_GEN_CONFIG.upscalePath;
 
+  // ── Attempt real upscale (Real-ESRGAN via Replicate) ──────
   let res;
   try {
-    res = await fetch(endpoint, {
+    res = await fetch(realEndpoint, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
-        url:    imageObj.url,
-        width:  imageObj.widthPx,
-        height: imageObj.heightPx,
-      }),
+      body:    JSON.stringify({ image: imageObj.url, scale: 4 }),
     });
-  } catch (networkErr) {
-    throw new Error('Cannot reach the PrintPath server. Is it running?');
+  } catch (_) {
+    res = null; // network error → fall through to shim
   }
 
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.error || `Upscale failed (${res.status})`);
+  // ── Fallback to logical shim if real upscale unavailable ──
+  if (!res || !res.ok) {
+    if (res) {
+      const errBody = await res.json().catch(() => ({}));
+      // 503 = Replicate token not configured — silent fallback
+      if (res.status !== 503) {
+        console.warn('[PrintPath] Real upscale returned', res.status, errBody.error || '');
+      }
+    }
+    console.log('[PrintPath] Falling back to logical upscale shim…');
+    let shimRes;
+    try {
+      shimRes = await fetch(shimEndpoint, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ url: imageObj.url, width: imageObj.widthPx, height: imageObj.heightPx }),
+      });
+    } catch (networkErr) {
+      throw new Error('Cannot reach the PrintPath server. Is it running?');
+    }
+    if (!shimRes.ok) {
+      const errData = await shimRes.json().catch(() => ({}));
+      throw new Error(errData.error || `Upscale failed (${shimRes.status})`);
+    }
+    const shimData = await shimRes.json();
+    return {
+      url:          shimData.url      || imageObj.url,
+      dpi:          shimData.dpi      || imageObj.dpi * 2,
+      widthPx:      shimData.width    || imageObj.widthPx  * 2,
+      heightPx:     shimData.height   || imageObj.heightPx * 2,
+      isPrintReady: shimData.isPrintReady || false,
+      upscaled:     true,
+      upscaleMethod: 'shim',
+    };
   }
 
-  const data = await res.json();
+  // ── Real upscale succeeded ─────────────────────────────────
+  const data     = await res.json();
+  const newUrl   = data.url || imageObj.url;
+  // Real-ESRGAN 4× scale: output is 4× input dimensions
+  const newW     = data.width    || imageObj.widthPx  * 4;
+  const newH     = data.height   || imageObj.heightPx * 4;
+  const newDpi   = Math.round(newW / 4); // 4" baseline
+  const isPR     = newW >= 1200;         // ≥ 4" @ 300 DPI
+
+  console.log(`[PrintPath] Real upscale complete: ${imageObj.widthPx}→${newW}px | DPI: ${newDpi} | printReady: ${isPR}`);
+
   return {
-    url:      data.url      || imageObj.url,
-    dpi:      data.dpi      || imageObj.dpi * 2,
-    widthPx:  data.width    || imageObj.widthPx  * 2,
-    heightPx: data.height   || imageObj.heightPx * 2,
-    upscaled: true,
+    url:          newUrl,
+    dpi:          newDpi,
+    widthPx:      newW,
+    heightPx:     newH,
+    isPrintReady: isPR,
+    upscaled:     true,
+    upscaleMethod: 'real-esrgan',
   };
 }
 
@@ -590,17 +1037,36 @@ function openAiGen() {
   if (input) {
     setTimeout(() => {
       input.focus();
-      // Place cursor at end if there's already text
       const len = input.value.length;
       input.setSelectionRange(len, len);
     }, 80);
   }
+
+  // Sync QA mode picker to persisted value (both action bar and top selector)
+  const qaPicker = document.getElementById('ai-qa-mode-picker');
+  if (qaPicker) qaPicker.value = QA_MODE;
+  const qaPickerTop = document.getElementById('ai-qa-mode-top');
+  if (qaPickerTop) qaPickerTop.value = QA_MODE;
 }
 
 function closeAiGen() {
   const overlay = document.getElementById('ai-gen-overlay');
   if (!overlay) return;
   aiGenState.open = false;
+
+  // Feature 8: Save lock-in — notify user their design is saved
+  if (aiGenState.results.length > 0) {
+    const lock = document.getElementById('ai-save-lock');
+    const lockText = document.getElementById('ai-save-lock-text');
+    if (lock) {
+      const label = aiGenState.lastPrompt
+        ? `"${aiGenState.lastPrompt.slice(0, 40)}" is saved — come back any time.`
+        : 'Your design is saved — come back any time.';
+      if (lockText) lockText.textContent = label;
+      lock.style.display = 'flex';
+      setTimeout(() => { lock.style.display = 'none'; }, 5000);
+    }
+  }
 
   if (typeof PP !== 'undefined') {
     const modal = overlay.querySelector('.ai-gen-modal');
@@ -632,16 +1098,56 @@ function aiGenRenderResults() {
     const check    = ppDpiCheck(img.widthPx, sizePreset.inches);
     const selected = aiGenState.selected && aiGenState.selected.url === img.url;
     const isBest   = i === bestIdx;
+    const qa       = img._qa || null;
 
+    // DPI badge
     const badgeLabel = check.ok ? 'Print Ready' : check.grade === 'warn' ? 'Upscale Rec.' : 'Needs Upscale';
 
+    // QA badge
+    let qaBadgeHtml = '';
+    if (qa === null) {
+      // QA still running
+      qaBadgeHtml = `<span class="ai-qa-badge pending" title="Quality check in progress…">⏳ Checking…</span>`;
+    } else if (qa.passesQa) {
+      const modeLabel = (qa && QA_CONFIG[qa.qaMode || QA_MODE] || QA_CONFIG[QA_MODE]).label;
+      qaBadgeHtml = `<span class="ai-qa-badge pass" title="${modeLabel} · score: ${qa.qaScore}/100">✓ ${modeLabel}</span>`;
+    } else {
+      // Build a human-readable issue summary (max 2 issues shown)
+      const issueLabels = {
+        'background-not-transparent': 'No transparency',
+        'low-transparency':           'Low transparency',
+        'background-clutter':         'Background clutter',
+        'high-clutter':               'High clutter',
+        'off-center':                 'Off-center',
+        'slightly-off-center':        'Slightly off-center',
+        'multiple-subjects-detected': 'Multiple subjects',
+        'possible-multiple-subjects': 'Possible multi-subject',
+        'multiple-subjects-prompt':   'Multi-subject prompt',
+        'soft-edges':                 'Soft edges',
+        'slightly-soft-edges':        'Slightly soft edges',
+        'qa-error':                   'QA unavailable',
+      };
+      const modeLabel = (QA_CONFIG[qa.qaMode || QA_MODE] || QA_CONFIG[QA_MODE]).label;
+      const shown = (qa.qaIssues || []).slice(0, 2)
+        .map(k => issueLabels[k] || k).join(' · ');
+      qaBadgeHtml = `<span class="ai-qa-badge fail" title="${modeLabel} · score: ${qa.qaScore}/100 | Issues: ${(qa.qaIssues||[]).join(', ')}">⚠ ${shown || 'QA issue'}</span>`;
+    }
+
+    // Card-level rejected overlay (critical QA failure)
+    const isCriticalFail = qa && !qa.passesQa &&
+      (qa.qaIssues || []).some(i => ['background-not-transparent','background-clutter','multiple-subjects-detected'].includes(i));
+    const rejectedOverlay = isCriticalFail
+      ? `<div class="ai-qa-rejected-overlay" title="Rejected: ${(qa.qaIssues||[]).join(', ')}"><span>⊘ Rejected</span></div>`
+      : '';
+
     return `
-      <div class="ai-result-card${selected ? ' selected' : ''}${isBest ? ' best-match' : ''}"
+      <div class="ai-result-card${selected ? ' selected' : ''}${isBest ? ' best-match' : ''}${isCriticalFail ? ' qa-rejected' : ''} fade-in-card"
+           style="animation-delay:${i * 80}ms"
            onclick="aiGenSelectResult(${i})"
            role="button" tabindex="0"
            aria-label="Generated design ${i + 1}${isBest ? ' — best match' : ''}"
            onkeydown="if(event.key==='Enter'||event.key===' ')aiGenSelectResult(${i})">
-        ${isBest ? '<div class="ai-best-label">Recommended</div>' : ''}
+        ${isBest ? '<div class="ai-best-label">✦ Recommended</div>' : ''}
         <div class="ai-result-img-wrap">
           <img src="${img.url}" alt="Generated design ${i + 1}" class="ai-result-img"
                loading="lazy" crossorigin="anonymous"
@@ -650,10 +1156,15 @@ function aiGenRenderResults() {
           <div class="ai-result-loading-overlay">
             <div class="ai-spinner-sm"></div>
           </div>
+          ${rejectedOverlay}
         </div>
         <div class="ai-result-meta">
           <span class="ai-dpi-badge ${check.grade}">${badgeLabel}</span>
           <span class="ai-dpi-num">${check.dpi} DPI · ${img.widthPx}px</span>
+        </div>
+        <div class="ai-result-qa-row">
+          ${qaBadgeHtml}
+          ${qa && !qa.passesQa ? `<span class="ai-qa-score">${qa.qaScore}/100</span>` : ''}
         </div>
       </div>`;
   }).join('');
@@ -738,33 +1249,256 @@ function aiGenShowActionBar(img) {
 
   bar.style.display = 'flex';
 
+  // Keep QA mode picker in sync
+  const qaPicker = document.getElementById('ai-qa-mode-picker');
+  if (qaPicker && qaPicker.value !== QA_MODE) qaPicker.value = QA_MODE;
+
   const check = ppDpiReadout(img);
 
-  // Legacy badge — keep for screen readers / compact view
+  // Gate 1: DPI / pixel-math
+  const sizePreset   = AI_GEN_CONFIG.printSizes[aiGenState.selectedSizeIdx];
+  const pixelCheck   = ppDpiCheck(img.widthPx, sizePreset.inches);
+  const isPrintReady = img.isPrintReady === true && pixelCheck.ok;
+
+  // Gate 2: QA pass (canvas pixel analysis)
+  const qa         = img._qa || null;
+  const qaRunning  = qa === null; // still pending
+  const passesQa   = qa ? qa.passesQa : false;
+
+  // Final gate: BOTH must pass before Continue buttons unlock
+  const canContinue = isPrintReady && passesQa;
+
+  // ── Status badge ──────────────────────────────────────────
   const badge = document.getElementById('ai-action-badge');
   if (badge) {
-    if (check.ok) {
-      badge.textContent = '✅ Print Ready — 300 DPI';
+    const modeCfg = QA_CONFIG[QA_MODE] || QA_CONFIG.sticker;
+    if (qaRunning) {
+      badge.textContent = `⏳ Running ${modeCfg.label}…`;
+      badge.className   = 'ai-action-badge pending';
+      badge.title       = `Checking with ${modeCfg.label} (pass threshold: ${modeCfg.passScore})`;
+    } else if (!isPrintReady) {
+      badge.textContent = `⚠️ ${pixelCheck.dpi} DPI — upscale before sending to print`;
+      badge.className   = 'ai-action-badge warn';
+      badge.title       = '';
+    } else if (!passesQa) {
+      const topIssue = (qa.qaIssues || [])[0] || 'quality issue';
+      const labels = {
+        'background-not-transparent': 'background not transparent',
+        'background-clutter':         'background clutter detected',
+        'off-center':                 'subject is off-center',
+        'multiple-subjects-detected': 'multiple subjects detected',
+        'soft-edges':                 'soft/blurry edges detected',
+        'low-transparency':           'low transparency',
+        'high-clutter':               'high background clutter',
+      };
+      badge.textContent = `⚠️ ${modeCfg.label} — ${labels[topIssue] || topIssue} (${qa.qaScore}/${modeCfg.passScore})`;
+      badge.className   = 'ai-action-badge warn';
+      badge.title       = `Issues: ${(qa.qaIssues || []).join(', ')}`;
+    } else if (qa && qa.corsSkipped) {
+      badge.textContent = '⚠️ QA check unavailable — verify image manually before printing';
+      badge.className   = 'ai-action-badge warn';
+      badge.title       = 'Canvas analysis was blocked (CORS). Inspect the image before sending to print.';
+    } else {
+      const qaCfg = QA_CONFIG[qa.qaMode || QA_MODE] || QA_CONFIG.sticker;
+      badge.textContent = `✅ Print Ready — ${pixelCheck.dpi} DPI · ${qaCfg.label} ${qa.qaScore}/${qaCfg.passScore}`;
       badge.className   = 'ai-action-badge pass';
+      badge.title       = `Mode: ${qaCfg.label} · Pass threshold: ${qaCfg.passScore}`;
       badge.classList.remove('glow-pop');
       void badge.offsetWidth;
       badge.classList.add('glow-pop');
-      if (typeof ppSound !== 'undefined') ppSound.play('ding');
-    } else {
-      badge.textContent = `⚠️ ${check.dpi} DPI — upscale for print`;
-      badge.className   = 'ai-action-badge warn';
+      // Sound + card glow are handled by the progression block below
     }
   }
 
-  // Show/hide upscale button
+  // ── Upscale button ─────────────────────────────────────────
   const upscaleBtn = document.getElementById('ai-upscale-btn');
-  if (upscaleBtn) upscaleBtn.style.display = check.ok ? 'none' : 'inline-flex';
+  if (upscaleBtn) upscaleBtn.style.display = isPrintReady ? 'none' : 'inline-flex';
+
+  // ── Improve / variation bar ────────────────────────────────
+  const improveBar = document.getElementById('ai-improve-bar');
+  if (improveBar) improveBar.style.display = 'flex';
+
+  // ── Continue buttons — gated on BOTH isPrintReady AND passesQa ──
+  const stickerBtn = document.getElementById('ai-to-sticker-btn');
+  const designBtn  = document.getElementById('ai-to-design-btn');
+
+  const _buildBlockedTitle = (imgObj, preset, dpiOk, qaResult) => {
+    if (!dpiOk)
+      return `Upscale first — needs ${preset.inches * 300}px, have ${imgObj.widthPx}px`;
+    if (qaResult && !qaResult.passesQa)
+      return `QA failed (score ${qaResult.qaScore}/100): ${(qaResult.qaIssues || []).join(', ')}`;
+    return '';
+  };
+
+  // ── Fix Design CTA — shown when blocked, hidden when ready ──
+  const fixBtn = document.getElementById('ai-fix-design-btn');
+  if (fixBtn) {
+    if (!canContinue && !qaRunning) {
+      fixBtn.style.display = 'inline-flex';
+      if (!isPrintReady) {
+        fixBtn.textContent = '⬆ Fix Design — Upscale';
+        fixBtn.onclick = () => { const u = document.getElementById('ai-upscale-btn'); if (u) u.click(); };
+      } else {
+        fixBtn.textContent = '✦ Fix Design — Improve';
+        fixBtn.onclick = aiGenImprove;
+      }
+    } else {
+      fixBtn.style.display = 'none';
+    }
+  }
+
+  if (stickerBtn) {
+    stickerBtn.disabled          = !canContinue;
+    stickerBtn.title             = !canContinue ? _buildBlockedTitle(img, sizePreset, isPrintReady, qa) : '';
+    stickerBtn.style.opacity     = !canContinue ? '0' : '';
+    stickerBtn.style.cursor      = !canContinue ? 'not-allowed' : '';
+    stickerBtn.style.pointerEvents = !canContinue ? 'none' : '';
+  }
+  if (designBtn) {
+    designBtn.disabled           = !canContinue;
+    designBtn.title              = !canContinue ? _buildBlockedTitle(img, sizePreset, isPrintReady, qa) : '';
+    designBtn.style.opacity      = !canContinue ? '0' : '';
+    designBtn.style.cursor       = !canContinue ? 'not-allowed' : '';
+    designBtn.style.pointerEvents = !canContinue ? 'none' : '';
+  }
+
+  // ── Fix 6: Confidence toast — pass/fail message ────────────
+  const confToast = document.getElementById('ai-confidence-toast');
+  if (confToast) {
+    confToast.textContent = canContinue
+      ? '✦ This will print clean and sharp.'
+      : '⚠ Needs adjustment before printing.';
+    // Re-attach handlers to avoid stale closures (use data flag to debounce)
+    const attachConfidence = (btn) => {
+      if (!btn || btn.dataset.confWired === '1') return;
+      btn.dataset.confWired = '1';
+      btn.addEventListener('mouseenter', () => {
+        if (!btn.disabled && confToast) {
+          confToast.style.display = 'block';
+          confToast.classList.add('conf-visible');
+        }
+      });
+      btn.addEventListener('mouseleave', () => {
+        if (confToast) {
+          confToast.classList.remove('conf-visible');
+          setTimeout(() => { if (!confToast.classList.contains('conf-visible')) confToast.style.display = 'none'; }, 300);
+        }
+      });
+    };
+    if (stickerBtn) attachConfidence(stickerBtn);
+    if (designBtn)  attachConfidence(designBtn);
+  }
+
+  // ── Features 4, 7, 8: Progression + near-miss + print-ready reward ──
+  const progMsg = document.getElementById('ai-progression-msg');
+  if (progMsg) {
+    progMsg.style.display = 'none';
+    progMsg.className = 'ai-progression-msg';
+
+    if (!qaRunning && qa) {
+      const cfg = QA_CONFIG[qa.qaMode || QA_MODE] || QA_CONFIG.sticker;
+      const nearMissThreshold = cfg.passScore - 15;
+
+      if (canContinue) {
+        // Feature 6 + 7: Print Ready reward — glow card + sound (once per session per image)
+        if (!img._printReadyRewarded) {
+          img._printReadyRewarded = true;
+          if (typeof ppSound !== 'undefined') ppSound.play('ding');
+          // Glow the selected card
+          const grid = document.getElementById('ai-results-grid');
+          if (grid) {
+            const cards = grid.querySelectorAll('.ai-result-card.selected');
+            cards.forEach(c => {
+              c.classList.remove('print-ready-glow');
+              void c.offsetWidth;
+              c.classList.add('print-ready-glow');
+            });
+          }
+          // Smart install prompt — user is engaged, design looks great
+          if (typeof ppMaybeShowInstall === 'function') {
+            setTimeout(ppMaybeShowInstall, 1200); // slight delay after reward
+          }
+        }
+        // Feature 5: Auto-save silently on print-ready
+        if (!img._autoSaved) {
+          img._autoSaved = true;
+          saveAiDesign(img);
+          // Show quiet "Saved automatically" near save button
+          const saveBtn = document.getElementById('ai-save-btn');
+          if (saveBtn) {
+            saveBtn.classList.add('auto-saved');
+            saveBtn.setAttribute('data-auto-label', 'Saved automatically');
+            setTimeout(() => saveBtn.classList.remove('auto-saved'), 3000);
+          }
+        }
+        // Feature 4: Progression text — print ready
+        progMsg.textContent = '✦ Print ready — this one\'s a keeper.';
+        progMsg.className = 'ai-progression-msg prog-ready';
+        progMsg.style.display = 'block';
+      } else if (qa.corsSkipped) {
+        // Fix 2: CORS-skipped — user needs manual check
+        progMsg.textContent = '⚠ QA check unavailable — verify the image looks clean before printing.';
+        progMsg.className = 'ai-progression-msg prog-nearmiss';
+        progMsg.style.display = 'block';
+      } else if (qa.qaScore >= 45 && qa.qaScore <= 55 && !qa.passesQa && isPrintReady) {
+        // Fix 7: Tight near-miss band — very specific encouragement
+        progMsg.textContent = '⬆ Almost there — one more try.';
+        progMsg.className = 'ai-progression-msg prog-nearmiss';
+        progMsg.style.display = 'block';
+      } else if (qa.qaScore > 55 && qa.qaScore >= nearMissThreshold && !qa.passesQa && isPrintReady) {
+        // Wider near-miss
+        progMsg.textContent = '⬆ Almost there — try upscaling or regenerating.';
+        progMsg.className = 'ai-progression-msg prog-nearmiss';
+        progMsg.style.display = 'block';
+      } else if (qa.qaScore >= 40) {
+        // Getting close
+        progMsg.textContent = 'Getting close — try a different style or regenerate.';
+        progMsg.className = 'ai-progression-msg prog-close';
+        progMsg.style.display = 'block';
+      } else if (qa.qaScore < 40 && !qa.passesQa) {
+        // Good start
+        progMsg.textContent = 'Good start — regenerate or try a cleaner prompt.';
+        progMsg.className = 'ai-progression-msg prog-start';
+        progMsg.style.display = 'block';
+      }
+    }
+  }
 
   // Show the color toolkit
   ppCtShow();
 
-  // Show the money engine panel
-  meShowPanel(img, check.ok);
+  // Show the money engine panel (pass canContinue so it can reflect QA status)
+  meShowPanel(img, canContinue);
+
+  // ── Feature 1: Confidence bar ──────────────────────────────
+  const confBar = document.getElementById('ai-confidence-bar');
+  if (confBar) confBar.style.display = canContinue ? 'flex' : 'none';
+
+  // ── Feature 2: Mockup preview row ─────────────────────────
+  const mockupRow = document.getElementById('ai-mockup-row');
+  if (mockupRow) {
+    mockupRow.style.display = canContinue ? 'flex' : 'none';
+    if (canContinue && !mockupRow.dataset.init) {
+      mockupRow.dataset.init = '1';
+      aiMockupPreview('shirt'); // default preview
+    }
+  }
+
+  // ── Feature 3: Compare mode buttons ───────────────────────
+  const compareRow = document.getElementById('ai-compare-row');
+  if (compareRow) {
+    compareRow.style.display = aiGenState.results.length > 1 ? 'flex' : 'none';
+    aiCompareUpdate();
+  }
+
+  // ── Features 5 + 9: Price strip + trust badge ──────────────
+  const priceStrip = document.getElementById('ai-price-strip');
+  if (priceStrip) priceStrip.style.display = 'flex';
+  aiUpdatePrice();
+
+  // ── Feature 10: Send to Print primary CTA ──────────────────
+  const sendBtn = document.getElementById('ai-send-to-print-btn');
+  if (sendBtn) sendBtn.style.display = canContinue ? 'inline-flex' : 'none';
 }
 
 /* ====================================================
@@ -856,6 +1590,25 @@ async function aiGenSubmit() {
   const enforcedPrompt = ppBuildPrompt(workingPrompt, aiGenState.lastStyle);
   // ─────────────────────────────────────────────────────────────
 
+  // Extract what the server actually needs: clean subject + style metadata.
+  // The server builds the full strict prompt — we send subject+hints, not the
+  // full verbose ppBuildPrompt string (avoids double-wrapping contradictions).
+  const genSubject   = analysis.subject || workingPrompt;
+  const genStyle     = aiGenState.lastStyle || null;
+  const genLayout    = analysis.layout ? analysis.layout.instruction : null;
+  const genColorNote = (analysis.palette && analysis.palette.desc)
+    ? `${analysis.palette.desc} only, maximum ${analysis.palette.colors.length} colors, no gradients`
+    : null;
+
+  // Debug log: full pipeline stages
+  console.log('[PrintPath] Pipeline:');
+  console.log('  1. raw     :', rawPrompt);
+  console.log('  2. cleaned :', cleanedInput);
+  console.log('  3. subject :', genSubject);
+  console.log('  4. style   :', genStyle   || '(none)');
+  console.log('  5. layout  :', analysis.layoutKey);
+  console.log('  6. prompt  :', enforcedPrompt.slice(0, 120) + '...');
+
   // Hide old results, layout badge, and panels — show spinner
   const grid = document.getElementById('ai-results-grid');
   if (grid) grid.innerHTML = '';
@@ -863,6 +1616,17 @@ async function aiGenSubmit() {
   if (badge) badge.style.display = 'none';
   const bar  = document.getElementById('ai-action-bar');
   if (bar) bar.style.display = 'none';
+  const improveBar = document.getElementById('ai-improve-bar');
+  if (improveBar) improveBar.style.display = 'none';
+  const progMsg = document.getElementById('ai-progression-msg');
+  if (progMsg) progMsg.style.display = 'none';
+  // Hide conversion panels and reset init flags
+  ['ai-confidence-bar','ai-mockup-row','ai-mockup-stage','ai-compare-row','ai-price-strip','ai-fix-design-btn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.style.display = 'none'; delete el.dataset.init; }
+  });
+  const sendBtn = document.getElementById('ai-send-to-print-btn');
+  if (sendBtn) sendBtn.style.display = 'none';
   const mePanel = document.getElementById('me-panel');
   if (mePanel) mePanel.style.display = 'none';
   // Hide color toolkit until a new design is selected
@@ -871,19 +1635,17 @@ async function aiGenSubmit() {
   aiGenSetLoading(true);
 
   try {
-    // Pass enforced prompt + negative prompt to the generator.
-    // generateDesign() currently uses the prompt as a seed for placeholders;
-    // when you wire a real API, pass PP_NEGATIVE_PROMPT as `negative_prompt`.
-    const results = await generateDesign(enforcedPrompt, PP_NEGATIVE_PROMPT);
+    // Send subject + style metadata to server.
+    // Server builds the full strict prompt — single source of truth.
+    const results = await generateDesign(genSubject, genStyle, genLayout, genColorNote);
 
-    // ── Fail detection ──────────────────────────────────────────
-    // Check if any result looks like it contains a scene / wrong subject.
-    // On the first failure, silently regenerate once with extra emphasis.
-    const failCount = results.filter(r => ppDetectFailure(r, rawPrompt)).length;
-    if (failCount > results.length / 2 && aiGenState.genCount < 99) {
-      // More than half look wrong — auto-regen with stronger subject emphasis
-      const retryPrompt = ppBuildPrompt(`ONLY a ${ppSanitizeInput(rawPrompt)}, nothing else`, aiGenState.lastStyle);
-      const retryResults = await generateDesign(retryPrompt, PP_NEGATIVE_PROMPT);
+    // ── Failure detection — pixel-math DPI gate ────────────────
+    const minViablePx = 900;
+    const failCount   = results.filter(r => (r.widthPx || 0) < minViablePx).length;
+    if (failCount === results.length && aiGenState.genCount < 99) {
+      const retrySubject = ppSanitizeInput(rawPrompt).split(/\s+/).slice(0, 3).join(' ');
+      console.log('[PrintPath] Auto-retry with simplified subject:', retrySubject);
+      const retryResults = await generateDesign(retrySubject, genStyle, null, null);
       aiGenState.results = retryResults;
       aiGenShowInfo('✦ Auto-refined — showing improved results.');
     } else {
@@ -891,21 +1653,59 @@ async function aiGenSubmit() {
     }
     // ────────────────────────────────────────────────────────────
 
-    // Show layout badge with auto-selected layout/palette details
+    // ── QA INSPECTION — run on every result in parallel ────────
+    // ppQaInspect loads each image into an offscreen canvas and runs
+    // 5 pixel-analysis checks. Results are cached on img._qa.
+    // We render first (so the user sees images immediately), then
+    // re-render after QA to attach badges — non-blocking UX.
     ppUpdateLayoutBadge(aiGenState._lastAnalysis);
-
-    aiGenRenderResults();
+    aiGenRenderResults(); // first render: no QA badges yet
 
     // Native-feel: stagger card entrance animation
     if (typeof PP !== 'undefined') {
       const grid = document.getElementById('ai-results-grid');
       if (grid) PP.staggerResultCards(grid);
     }
-
     if (typeof ppSound !== 'undefined') ppSound.play('whoosh');
+
+    // Run QA in parallel, then re-render with badges
+    Promise.all(
+      aiGenState.results.map(img => ppQaInspect(img, genSubject).catch(() => ({
+        qaScore: 0, qaIssues: ['qa-error'], passesQa: false,
+      })))
+    ).then(qaResults => {
+      // Merge QA results back onto each image object
+      qaResults.forEach((qa, i) => {
+        if (aiGenState.results[i]) {
+          aiGenState.results[i]._qa = qa;
+        }
+      });
+
+      // Feature 2: Update bestMatchIndex to card with highest qaScore
+      let bestScore = -1, bestQaIdx = 0;
+      aiGenState.results.forEach((img, i) => {
+        const score = img._qa ? img._qa.qaScore : 0;
+        if (score > bestScore) { bestScore = score; bestQaIdx = i; }
+      });
+      aiGenState.bestMatchIndex = bestQaIdx;
+
+      // Re-render grid with QA badges now attached
+      aiGenRenderResults();
+      // If user already selected an image, refresh the action bar gate
+      if (aiGenState.selected) {
+        const freshSelected = aiGenState.results.find(r => r.url === aiGenState.selected.url);
+        if (freshSelected) {
+          aiGenState.selected = freshSelected;
+          aiGenShowActionBar(freshSelected);
+        }
+      }
+    });
+    // ────────────────────────────────────────────────────────────
+
   } catch (err) {
     console.error('[PrintPath AI Gen]', err);
-    aiGenShowError('Generation failed — try a different description.');
+    const msg = (err && err.message) ? err.message : 'Generation failed — try a different description.';
+    aiGenShowError(msg);
   } finally {
     aiGenState.loading = false;
     aiGenSetLoading(false);
@@ -930,17 +1730,30 @@ async function aiGenUpscale() {
     // Replace the selected entry in results array
     const idx = aiGenState.results.findIndex(r => r.url === aiGenState.selected.url);
     if (idx !== -1) {
-      aiGenState.results[idx] = Object.assign({}, aiGenState.results[idx], upscaled);
-      aiGenState.selected     = aiGenState.results[idx];
+      // Clear QA cache — upscale may return a new URL / different pixel data
+      const merged = Object.assign({}, aiGenState.results[idx], upscaled);
+      delete merged._qa;  // force re-inspect on new dimensions
+      aiGenState.results[idx] = merged;
+      aiGenState.selected     = merged;
     }
 
     aiGenRenderResults();
-    aiGenShowActionBar(aiGenState.selected);
+    aiGenShowActionBar(aiGenState.selected); // shows ⏳ QA pending
+
+    // Re-run QA on the upscaled image
+    const subjectForQa = aiGenState.lastPrompt || '';
+    ppQaInspect(aiGenState.selected, subjectForQa).then(qa => {
+      aiGenState.selected._qa = qa;
+      const idx2 = aiGenState.results.findIndex(r => r.url === aiGenState.selected.url);
+      if (idx2 !== -1) aiGenState.results[idx2]._qa = qa;
+      aiGenRenderResults();
+      aiGenShowActionBar(aiGenState.selected);
+    }).catch(() => {});
 
     const sizePreset = AI_GEN_CONFIG.printSizes[aiGenState.selectedSizeIdx];
     const check      = ppDpiCheck(aiGenState.selected.widthPx, sizePreset.inches);
     if (check.ok) {
-      aiGenShowInfo('✓ Upscale complete — design is now print-ready!');
+      aiGenShowInfo('✓ Upscale complete — running QA check…');
     } else {
       aiGenShowInfo(`Upscaled to ${check.dpi} DPI at ${sizePreset.inches}". For ${Math.ceil(aiGenState.selected.widthPx / 300)}" max print size at 300 DPI.`);
     }
@@ -961,6 +1774,9 @@ async function aiGenUpscale() {
 async function aiGenSendToStickerLab() {
   const img = aiGenState.selected;
   if (!img) { aiGenShowError('Select a design first.'); return; }
+
+  // Smart install prompt — user is continuing to production
+  if (typeof ppMaybeShowInstall === 'function') ppMaybeShowInstall();
 
   // DPI check using pixel math — warn but don't hard-block (Sticker Lab has its own check)
   const sizePreset = AI_GEN_CONFIG.printSizes[aiGenState.selectedSizeIdx];
@@ -1015,30 +1831,31 @@ async function aiGenSendToDesignLab() {
   const img = aiGenState.selected;
   if (!img) { aiGenShowError('Select a design first.'); return; }
 
+  // Fix 3: Guard BEFORE closing the modal — don't strand the user
+  if (typeof state === 'undefined' || !state.products || state.products.length === 0) {
+    aiGenShowError('Open a product in Design Lab first, then come back to apply this design.');
+    return;
+  }
+
+  // Smart install prompt — user is continuing to production
+  if (typeof ppMaybeShowInstall === 'function') ppMaybeShowInstall();
+
   saveAiDesign(img);
   closeAiGen();
 
-  // Open Design Lab with the first available product that supports it,
-  // or open the Design Lab nav button's target product
-  if (typeof state !== 'undefined' && state.products && state.products.length > 0) {
-    const target = state.products[0];
-    openDesignLab(target.id);
+  const target = state.products[0];
+  openDesignLab(target.id);
 
-    setTimeout(() => {
-      const mainImg = document.getElementById('dl-main-img');
-      if (mainImg) {
-        mainImg.src = img.url;
-        mainImg.alt = 'AI generated design';
-      }
-      if (typeof showToast === 'function') {
-        showToast('👕 AI design applied to Design Lab!', 'success');
-      }
-    }, 180);
-  } else {
-    if (typeof showToast === 'function') {
-      showToast('Open a product first, then apply the AI design.', 'info');
+  setTimeout(() => {
+    const mainImg = document.getElementById('dl-main-img');
+    if (mainImg) {
+      mainImg.src = img.url;
+      mainImg.alt = 'AI generated design';
     }
-  }
+    if (typeof showToast === 'function') {
+      showToast('👕 AI design applied to Design Lab!', 'success');
+    }
+  }, 180);
 }
 
 /* ====================================================
@@ -1107,6 +1924,7 @@ function aiGenSetLoading(on) {
   const hint     = document.getElementById('ai-results-hint');
   const regenBar = document.getElementById('ai-regen-bar');
   const loadText = document.getElementById('ai-loading-text');
+  const grid     = document.getElementById('ai-results-grid');
 
   if (btn) {
     btn.disabled    = on;
@@ -1115,6 +1933,21 @@ function aiGenSetLoading(on) {
   if (spinner) spinner.style.display = on ? 'flex' : 'none';
   if (hint)    hint.style.display    = on ? 'none' : (aiGenState.results.length ? 'none' : 'block');
   if (regenBar && !on && aiGenState.results.length > 0) regenBar.style.display = 'flex';
+
+  // Skeleton cards — show 4 placeholders while loading
+  if (grid) {
+    if (on) {
+      grid.innerHTML = Array(4).fill(0).map(() =>
+        `<div class="ai-result-card ai-skeleton-card">
+          <div class="ai-skeleton-img"></div>
+          <div class="ai-skeleton-line ai-skeleton-line--wide"></div>
+          <div class="ai-skeleton-line ai-skeleton-line--narrow"></div>
+        </div>`
+      ).join('');
+    } else {
+      // Skeletons will be replaced by aiGenRenderResults — nothing needed here
+    }
+  }
 
   // Cycle through loading messages
   if (_loadingTimer) { clearInterval(_loadingTimer); _loadingTimer = null; }
@@ -1180,6 +2013,46 @@ function aiGenRegenerate() {
 }
 
 /* ====================================================
+   IMPROVE — "Make it better" (refine current prompt)
+   ==================================================== */
+function aiGenImprove() {
+  if (!aiGenState.lastPrompt) return;
+  if (typeof ppSound !== 'undefined') ppSound.play('tick');
+
+  // Append a quiet refinement cue — server merch engine uses it
+  const refinements = ['cleaner edges', 'more detail', 'sharper contrast', 'bolder design'];
+  const cue = refinements[aiGenState.genCount % refinements.length];
+  aiGenState._improveHint = cue;
+
+  const input = document.getElementById('ai-prompt-input');
+  if (input) input.value = aiGenState.lastPrompt;
+
+  aiGenShowInfo(`✦ Refining — applying "${cue}"…`);
+  aiGenSubmit();
+}
+
+/* ====================================================
+   VARIATION — "More like this" / "Cleaner" / "Bolder"
+   ==================================================== */
+function aiGenVariation(type) {
+  if (!aiGenState.lastPrompt) return;
+  if (typeof ppSound !== 'undefined') ppSound.play('tick');
+
+  const styleMap = { 'like-this': null, 'cleaner': 'minimal', 'bolder': 'bold' };
+  const newStyle = styleMap[type] || null;
+  if (newStyle) {
+    aiGenState.lastStyle = newStyle;
+    document.querySelectorAll('.ai-chip[data-style]').forEach(c => {
+      c.classList.toggle('ai-chip--active', c.dataset.style === newStyle);
+    });
+  }
+
+  const input = document.getElementById('ai-prompt-input');
+  if (input) input.value = aiGenState.lastPrompt;
+  aiGenSubmit();
+}
+
+/* ====================================================
    STYLE VARIANT LOOP — appends style adjective to last prompt
    ==================================================== */
 function aiStyleVariant(style) {
@@ -1219,7 +2092,13 @@ function aiQuickPrompt(text) {
 function aiGenShowError(msg) {
   const box = document.getElementById('ai-error-box');
   if (!box) return;
-  box.textContent    = msg;
+  // Feature 12: reframe negative error language into positive guidance
+  const reframed = msg
+    .replace(/not print.?ready/gi,         'Almost there — quick fix needed')
+    .replace(/too low[, ]*upscale required/gi, 'Almost there — tap Upscale to fix this')
+    .replace(/^❌\s*/,                        '⚡ ')
+    .replace(/\bfailed\b/gi,               'needs a quick fix');
+  box.textContent    = reframed;
   box.style.display  = 'block';
   box.className      = 'ai-message-box error';
 }
@@ -1316,6 +2195,7 @@ function meSetQty(qty) {
   meHighlightQtyBtn(qty);
   meUpdateSavingsNudge(qty);
   meUpdateOrderBtn();
+  aiUpdatePrice(); // sync price strip
 }
 
 function meHighlightQtyBtn(qty) {
@@ -1343,8 +2223,8 @@ function meUpdateOrderBtn() {
   const qty  = aiGenState.meQty;
   const disc = meGetDiscount(qty);
   btn.textContent = disc > 0
-    ? `Lock Design & Order ${qty} (${disc}% off)`
-    : `Lock Design & Order ${qty}`;
+    ? `Save Design & Order ${qty} (${disc}% off)`
+    : `Save Design`;
 }
 
 function meEventYes() {
@@ -1387,6 +2267,231 @@ function meGroupChange(value) {
   aiGenState.meGroupMode = value;
 }
 
+/* ====================================================
+   CONVERSION — MOCKUP PREVIEW
+   Draws the selected design over a flat shirt/sticker
+   shape on an offscreen canvas for instant preview.
+   ==================================================== */
+let _mockupMode = 'shirt';
+
+function aiMockupPreview(mode) {
+  _mockupMode = mode;
+
+  // Sync active button
+  document.querySelectorAll('.ai-mockup-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.mockup === mode);
+  });
+
+  const stage  = document.getElementById('ai-mockup-stage');
+  const canvas = document.getElementById('ai-mockup-canvas');
+  const note   = document.getElementById('ai-mockup-note');
+  const img    = aiGenState.selected;
+
+  if (!stage || !canvas || !img || mode === 'none') {
+    if (stage) stage.style.display = 'none';
+    return;
+  }
+
+  stage.style.display = 'block';
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // Background
+  ctx.fillStyle = mode === 'sticker' ? '#ffffff' : '#1a1c24';
+  ctx.fillRect(0, 0, W, H);
+
+  // Shape
+  if (mode === 'shirt') {
+    _drawShirtShape(ctx, W, H);
+    if (note) note.textContent = 'Preview — chest print area shown';
+  } else if (mode === 'sticker') {
+    _drawStickerShape(ctx, W, H);
+    if (note) note.textContent = 'Preview — die-cut sticker shape';
+  }
+
+  // Overlay design image
+  const image = new Image();
+  image.crossOrigin = 'anonymous';
+  image.onload = () => {
+    const pad = mode === 'shirt' ? 90 : 55;
+    const size = W - pad * 2;
+    const x = (W - size) / 2;
+    const y = mode === 'shirt' ? 110 : (H - size) / 2;
+    ctx.save();
+    if (mode === 'shirt') {
+      // Clip to chest area
+      ctx.beginPath();
+      ctx.roundRect(x - 4, y - 4, size + 8, size + 8, 8);
+      ctx.clip();
+    }
+    ctx.drawImage(image, x, y, size, size);
+    ctx.restore();
+  };
+  image.onerror = () => { if (note) note.textContent = 'Preview not available for this image.'; };
+  image.src = img.url;
+}
+
+function _drawShirtShape(ctx, W, H) {
+  const c = '#2a2d3a', stroke = '#444';
+  ctx.save();
+  ctx.fillStyle = c;
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = 1.5;
+  // Simple flat shirt silhouette
+  ctx.beginPath();
+  ctx.moveTo(W * 0.2, H * 0.08);
+  ctx.lineTo(W * 0.1, H * 0.25);
+  ctx.lineTo(W * 0.18, H * 0.27);
+  ctx.lineTo(W * 0.18, H * 0.9);
+  ctx.lineTo(W * 0.82, H * 0.9);
+  ctx.lineTo(W * 0.82, H * 0.27);
+  ctx.lineTo(W * 0.9, H * 0.25);
+  ctx.lineTo(W * 0.8, H * 0.08);
+  ctx.quadraticCurveTo(W * 0.65, H * 0.14, W * 0.5, H * 0.15);
+  ctx.quadraticCurveTo(W * 0.35, H * 0.14, W * 0.2, H * 0.08);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+function _drawStickerShape(ctx, W, H) {
+  ctx.save();
+  ctx.fillStyle = '#ffffff';
+  ctx.strokeStyle = '#d0d0d0';
+  ctx.lineWidth = 2;
+  ctx.shadowColor = 'rgba(0,0,0,0.15)';
+  ctx.shadowBlur = 12;
+  const pad = 20;
+  ctx.beginPath();
+  ctx.roundRect(pad, pad, W - pad * 2, H - pad * 2, 20);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+/* ====================================================
+   CONVERSION — COMPARE MODE
+   Builds A/B/C/D toggle buttons for the 4 results.
+   ==================================================== */
+function aiCompareUpdate() {
+  const container = document.getElementById('ai-compare-btns');
+  if (!container) return;
+  const results = aiGenState.results;
+  if (results.length < 2) { container.innerHTML = ''; return; }
+
+  container.innerHTML = results.map((img, i) => {
+    const isActive = aiGenState.selected && aiGenState.selected.url === img.url;
+    const label = String.fromCharCode(65 + i); // A, B, C, D
+    const qa = img._qa;
+    const score = qa ? qa.qaScore : '?';
+    return `<button class="ai-compare-btn${isActive ? ' active' : ''}"
+      onclick="aiGenSelectResult(${i}); aiCompareUpdate();"
+      title="Version ${label} — QA score: ${score}/100"
+      aria-pressed="${isActive ? 'true' : 'false'}">
+      ${label} <span class="ai-compare-score">${score}</span>
+    </button>`;
+  }).join('');
+}
+
+/* ====================================================
+   CONVERSION — PRICE DISPLAY
+   Shows a simple per-item price based on qty in
+   the Money Engine (updates live with qty changes).
+   ==================================================== */
+const AI_PRICE_BASE = 12.99;  // ← set your shop's base price here
+
+function aiUpdatePrice() {
+  const el = document.getElementById('ai-price-num');
+  if (!el) return;
+  const qty  = aiGenState.meQty || 1;
+  const disc = meGetDiscount(qty);
+  const price = disc > 0
+    ? (AI_PRICE_BASE * (1 - disc / 100)).toFixed(2)
+    : AI_PRICE_BASE.toFixed(2);
+  el.textContent = `$${price}`;
+  // Update the unit label with qty context
+  const unit = document.querySelector('.ai-price-unit');
+  if (unit) {
+    unit.textContent = qty > 1 ? `per shirt (${qty} total — ${disc}% off)` : 'per shirt';
+  }
+}
+
+/* ====================================================
+   CONVERSION — SEND TO PRINT + REDIRECT SYSTEM
+   Features 10, 13, 14
+   ==================================================== */
+
+// ← REQUIRED: Replace with your real print shop order URL before going live
+// Example: 'https://yourshop.com/order' or a Printful/Printify webhook endpoint
+const PRINT_SHOP_URL = 'https://yourprintshop.com/order';
+
+async function aiSendToPrint() {
+  const img = aiGenState.selected;
+  if (!img) return;
+
+  // Fix 9: Hide install card so it doesn't clash with the print overlay
+  if (typeof ppHideInstallCard === 'function') ppHideInstallCard();
+
+  // Feature 13: Final confirmation overlay
+  const confirm = document.getElementById('ai-final-confirm');
+  const fill    = document.getElementById('ai-final-bar-fill');
+  if (confirm) {
+    confirm.style.display = 'flex';
+    // Animate the progress bar
+    if (fill) {
+      fill.style.width = '0%';
+      requestAnimationFrame(() => {
+        fill.style.transition = 'width 2s ease';
+        fill.style.width = '100%';
+      });
+    }
+    if (typeof ppSound !== 'undefined') ppSound.play('ding');
+  }
+
+  // Save before redirecting
+  saveAiDesign(img);
+  meAutoSaveState();
+
+  // Fix 8: Shorter delay + show redirecting feedback
+  const finalSub = document.querySelector('#ai-final-confirm .ai-final-sub');
+  if (finalSub) {
+    setTimeout(() => { finalSub.textContent = 'Redirecting…'; }, 900);
+  }
+  await new Promise(r => setTimeout(r, 1400));
+
+  const sizePreset = AI_GEN_CONFIG.printSizes[aiGenState.selectedSizeIdx];
+  ppSendToPrintShop(img.url, sizePreset.inches + '"', aiGenState.meQty || 1);
+}
+
+/**
+ * ppSendToPrintShop(imageUrl, size, qty)
+ * Redirects to the external print shop with order parameters.
+ * Swap PRINT_SHOP_URL above for your shop's endpoint.
+ */
+function ppSendToPrintShop(imageUrl, size, qty) {
+  const params = new URLSearchParams({
+    image: imageUrl,
+    size:  size,
+    qty:   qty,
+    ref:   'printpath',
+  });
+  // Log for analytics (Feature 15)
+  console.log('[PrintPath] Send to Print:', { imageUrl, size, qty });
+  try {
+    localStorage.setItem('pp-last-handoff', JSON.stringify({
+      imageUrl, size, qty, prompt: aiGenState.lastPrompt,
+      sentAt: new Date().toISOString(),
+    }));
+  } catch (_) {}
+  window.open(`${PRINT_SHOP_URL}?${params.toString()}`, '_blank', 'noopener');
+
+  // Hide confirmation overlay
+  const confirm = document.getElementById('ai-final-confirm');
+  if (confirm) confirm.style.display = 'none';
+}
+
 function meAddToCart() {
   const img = aiGenState.selected;
   if (!img) return;
@@ -1418,7 +2523,7 @@ function meAddToCart() {
   // Confirm state on button
   const btn = document.getElementById('me-order-btn');
   if (btn) {
-    btn.textContent = `✓ ${aiGenState.meQty} × Design Locked`;
+    btn.textContent = `✓ ${aiGenState.meQty} × Design Saved`;
     btn.classList.add('me-order-confirmed');
     btn.disabled = true;
   }
@@ -2003,8 +3108,10 @@ function ppSelectTier(tier, qty) {
 }
 
 function ppOpenPro() {
+  // Pro plan — route to AI design lab until payment is wired
+  openAiGen();
   if (typeof showToast === 'function') {
-    showToast('✨ PrintPath Pro — coming soon! You\'ll be first to know.', 'info');
+    showToast('✨ Pro features unlock automatically — design first, upgrade in-app soon.', 'info');
   }
 }
 
