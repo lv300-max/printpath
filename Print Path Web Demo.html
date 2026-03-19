@@ -968,9 +968,11 @@ html, body {
 
 <script>
 /* ============================================================
-   CONFIG — change this IP to your machine's local IP
+   CONFIG
+   Production: Netlify functions handle checkout + success
+   Local demo: set to http://LOCAL_IP:3000 and run server.js
 ============================================================ */
-let SERVER_URL = "http://10.0.0.86:3000";
+let SERVER_URL = "https://printpath-ai.netlify.app";
 
 /* ============================================================
    STATE
@@ -998,8 +1000,8 @@ function applyIP() {
 }
 
 function initQR() {
-  const ip = SERVER_URL.replace('http://', '').replace(':3000', '');
-  document.getElementById('ip-input').value = ip;
+  const display = SERVER_URL.replace('https://', '').replace('http://', '').replace(':3000', '');
+  document.getElementById('ip-input').value = display;
   document.getElementById('qr-url-text').textContent = SERVER_URL;
   drawQR(document.getElementById('qr-canvas'), SERVER_URL, 5);
 }

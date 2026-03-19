@@ -24,3 +24,13 @@
   from   = "/health"
   to     = "/.netlify/functions/health"
   status = 200
+
+[[redirects]]
+  from   = "/create-checkout-session"
+  to     = "/.netlify/functions/create-checkout-session"
+  status = 200
+
+[[redirects]]
+  from   = "/success"
+  to     = "/.netlify/functions/order-success"
+  status = 200
