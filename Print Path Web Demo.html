@@ -6,6 +6,8 @@
 <title>PrintPath — Live Demo</title>
 <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
 <link rel="apple-touch-icon" sizes="192x192" href="favicon-192.png" />
+<!-- Firebase -->
+<script type="module" src="/firebase-auth.js"></script>
 <style>
 /* ============================================================
    RESET + BASE
@@ -98,6 +100,90 @@ html, body {
 @keyframes livePulse {
   0%,100% { opacity:1; transform:scale(1); }
   50%      { opacity:0.4; transform:scale(0.8); }
+}
+
+/* ── Auth / User chip ─────────────────────────────────────── */
+.user-chip {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: 99px; padding: 4px 12px 4px 4px;
+  font-size: 0.72rem; font-weight: 600; color: var(--text);
+  cursor: default;
+}
+.user-avatar {
+  width: 26px; height: 26px; border-radius: 50%;
+  object-fit: cover; flex-shrink: 0;
+  background: var(--gdim); border: 1px solid rgba(0,255,156,0.3);
+}
+.user-avatar-fallback {
+  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+  background: var(--gdim); border: 1px solid rgba(0,255,156,0.3);
+  display: grid; place-items: center;
+  font-size: 0.7rem; font-weight: 800; color: var(--green);
+}
+.btn-logout {
+  padding: 4px 11px; border-radius: 99px;
+  background: transparent; border: 1px solid var(--border2);
+  color: var(--text2); font-size: 0.65rem; font-weight: 600;
+  cursor: pointer; transition: all 0.2s var(--ease);
+}
+.btn-logout:hover { border-color: var(--danger); color: var(--danger); }
+
+/* ── Login screen (shown before auth) ────────────────────── */
+#login-screen {
+  position: fixed; inset: 0; z-index: 999;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 0;
+  animation: fadeUp 0.5s var(--ease);
+}
+#login-screen.hidden { display: none; }
+
+.login-card {
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: 20px; padding: 44px 40px;
+  max-width: 380px; width: 90%;
+  text-align: center;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+  animation: up 0.5s var(--ease);
+}
+@keyframes up {
+  from { opacity:0; transform: translateY(16px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+.login-logo {
+  width: 64px; height: 64px; border-radius: 16px;
+  background: var(--gdim); border: 1px solid rgba(0,255,156,0.25);
+  display: grid; place-items: center; margin: 0 auto 20px;
+  box-shadow: 0 0 30px rgba(0,255,156,0.15);
+}
+.login-logo img { width: 40px; height: 40px; }
+.login-title {
+  font-size: 1.5rem; font-weight: 800; letter-spacing: -0.03em;
+  margin-bottom: 6px;
+}
+.login-title span { color: var(--green); }
+.login-sub {
+  font-size: 0.82rem; color: var(--text2);
+  margin-bottom: 32px; line-height: 1.5;
+}
+.btn-google {
+  width: 100%; height: 48px; border-radius: 12px;
+  background: #fff; color: #1a1a1a;
+  border: none; cursor: pointer;
+  font-size: 0.88rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  transition: all 0.2s var(--ease);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+}
+.btn-google:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(0,0,0,0.5); }
+.btn-google:active { transform: translateY(0); }
+.btn-google svg { width: 20px; height: 20px; flex-shrink: 0; }
+.btn-google.loading { opacity: 0.7; cursor: not-allowed; pointer-events: none; }
+.login-terms {
+  font-size: 0.62rem; color: var(--text3);
+  margin-top: 14px; line-height: 1.5;
 }
 
 .btn-reset {
@@ -679,6 +765,13 @@ html, body {
   </div>
   <div class="topbar-right">
     <div class="live-pill">Live</div>
+    <!-- Auth UI — injected by Firebase auth -->
+    <div id="user-chip" class="user-chip" style="display:none">
+      <div class="user-avatar-fallback" id="user-avatar-fallback">?</div>
+      <img id="user-avatar-img" class="user-avatar" style="display:none" alt="" />
+      <span id="user-name"></span>
+    </div>
+    <button class="btn-logout" id="btn-logout" style="display:none" onclick="handleLogout()">Sign out</button>
     <button class="btn-reset" onclick="resetDemo()">↺ Reset</button>
   </div>
 </header>
@@ -867,6 +960,30 @@ html, body {
       </div>
       <button class="btn-fw-confirm" onclick="doForward()">Forward to this shop</button>
     </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     LOGIN SCREEN
+============================================================ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <img src="/favicon-192.png" alt="PrintPath" />
+    </div>
+    <div class="login-title">Print<span>Path</span></div>
+    <div class="login-sub">Sign in to manage your sticker orders,<br>track earnings, and send designs to print.</div>
+    <button class="btn-google" id="btn-google-signin" onclick="handleGoogleSignIn()">
+      <!-- Google G logo -->
+      <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+        <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303C33.654 32.657 29.332 36 24 36c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/>
+        <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/>
+        <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.314 0-9.629-3.317-11.29-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/>
+        <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a11.996 11.996 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/>
+      </svg>
+      Sign in with Google
+    </button>
+    <div class="login-terms">By signing in you agree to our Terms of Service.<br>Your data is stored locally on this device.</div>
   </div>
 </div>
 
@@ -1413,6 +1530,8 @@ async function pollOnce() {
 
     appState.orders = data.orders;
     renderDashboard();
+    // Persist user data after every poll
+    if (window._currentUid) saveUserData(window._currentUid);
   } catch(_) {
     // server not running yet — silent fail
   }
@@ -1466,12 +1585,137 @@ function toast(msg, type) {
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 /* ============================================================
-   INIT
+   FIREBASE AUTH — called from firebase-auth.js via window.*
+   These stubs are replaced once Firebase loads.
+   Fallback: skip login if Firebase not configured.
 ============================================================ */
-document.addEventListener('DOMContentLoaded', function() {
+function handleGoogleSignIn() {
+  const btn = document.getElementById('btn-google-signin');
+  btn.classList.add('loading');
+  btn.querySelector('span') && (btn.lastChild.textContent = ' Signing in…');
+  // Actual sign-in is handled by firebase-auth.js
+  // If Firebase isn't configured, auto-skip after 1s
+  if (!window._firebaseReady) {
+    setTimeout(() => onAuthSuccess({ uid: 'demo', displayName: 'Demo User', photoURL: null }), 800);
+  }
+}
+
+function handleLogout() {
+  if (window._firebaseSignOut) {
+    window._firebaseSignOut();
+  } else {
+    onAuthSignedOut();
+  }
+}
+
+// Called by firebase-auth.js when user signs in
+window.onAuthSuccess = function(user) {
+  // Show user chip
+  document.getElementById('user-chip').style.display = 'flex';
+  document.getElementById('btn-logout').style.display = 'block';
+  document.getElementById('user-name').textContent = user.displayName?.split(' ')[0] || 'User';
+
+  if (user.photoURL) {
+    const img = document.getElementById('user-avatar-img');
+    img.src = user.photoURL;
+    img.style.display = 'block';
+    document.getElementById('user-avatar-fallback').style.display = 'none';
+  } else {
+    const initials = (user.displayName || 'U').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+    document.getElementById('user-avatar-fallback').textContent = initials;
+  }
+
+  // Load persisted user data from localStorage
+  loadUserData(user.uid);
+
+  // Hide login screen, show app
+  document.getElementById('login-screen').classList.add('hidden');
+
+  // Start the demo
   initQR();
   renderDashboard();
   startPolling();
+
+  toast('Welcome back, ' + (user.displayName?.split(' ')[0] || 'there') + '! 👋', 'g');
+};
+
+// Called by firebase-auth.js when user signs out
+window.onAuthSignedOut = function() {
+  // Save current state before clearing
+  if (window._currentUid) saveUserData(window._currentUid);
+  window._currentUid = null;
+
+  // Stop polling
+  if (appState.polling) clearInterval(appState.polling);
+
+  // Reset state
+  appState.orders    = [];
+  appState.earned    = 0;
+  appState.completed = 0;
+  appState.sentIds   = [];
+  appState.feedItems = [{ dot:'m', msg:'Signed out', ts: nowStr() }];
+
+  // Hide user chip
+  document.getElementById('user-chip').style.display = 'none';
+  document.getElementById('btn-logout').style.display = 'none';
+
+  // Show login screen
+  document.getElementById('login-screen').classList.remove('hidden');
+  toast('Signed out', 'g');
+};
+
+/* ============================================================
+   USER DATA PERSISTENCE (localStorage keyed by uid)
+============================================================ */
+function userKey(uid, key) { return `pp_${uid}_${key}`; }
+
+function saveUserData(uid) {
+  if (!uid) return;
+  localStorage.setItem(userKey(uid, 'orders'),    JSON.stringify(appState.orders));
+  localStorage.setItem(userKey(uid, 'earned'),    String(appState.earned));
+  localStorage.setItem(userKey(uid, 'completed'), String(appState.completed));
+  localStorage.setItem(userKey(uid, 'sentIds'),   JSON.stringify(appState.sentIds));
+  localStorage.setItem(userKey(uid, 'feedItems'), JSON.stringify(appState.feedItems.slice(0, 20)));
+  // Boosters placeholder
+  localStorage.setItem(userKey(uid, 'boosters'),  JSON.stringify(appState.boosters || []));
+}
+
+function loadUserData(uid) {
+  if (!uid) return;
+  window._currentUid = uid;
+  try {
+    const orders    = localStorage.getItem(userKey(uid, 'orders'));
+    const earned    = localStorage.getItem(userKey(uid, 'earned'));
+    const completed = localStorage.getItem(userKey(uid, 'completed'));
+    const sentIds   = localStorage.getItem(userKey(uid, 'sentIds'));
+    const feedItems = localStorage.getItem(userKey(uid, 'feedItems'));
+    const boosters  = localStorage.getItem(userKey(uid, 'boosters'));
+
+    if (orders)    appState.orders    = JSON.parse(orders);
+    if (earned)    appState.earned    = parseFloat(earned)  || 0;
+    if (completed) appState.completed = parseInt(completed) || 0;
+    if (sentIds)   appState.sentIds   = JSON.parse(sentIds);
+    if (feedItems) appState.feedItems = JSON.parse(feedItems);
+    if (boosters)  appState.boosters  = JSON.parse(boosters);
+  } catch(e) {
+    console.warn('loadUserData error:', e);
+  }
+}
+
+// Auto-save on every poll cycle
+const _origPollOnce = typeof pollOnce === 'function' ? pollOnce : null;
+
+/* ============================================================
+   INIT — gated by Firebase auth
+   Firebase will call onAuthSuccess / onAuthSignedOut.
+   If Firebase is not configured, show login screen and
+   auto-proceed with demo user on button click.
+============================================================ */
+document.addEventListener('DOMContentLoaded', function() {
+  // Login screen is shown by default (visible in HTML)
+  // Firebase auth state observer in firebase-auth.js will
+  // call onAuthSuccess if user is already signed in.
+  // If Firebase isn't configured, handleGoogleSignIn() falls back.
 });
 </script>
 </body>
