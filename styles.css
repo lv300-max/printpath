@@ -12,7 +12,7 @@
   --bg-overlay:    rgba(0, 0, 0, 0.88);
   --text-primary:  #f0efe8;
   --text-secondary:#8a8a9e;
-  --text-muted:    #3e3e56;
+  --text-muted:    #6b6b8a;
   --border-color:  #18182a;
   --accent:        #00e5a0;         /* Signature precision green */
   --accent-hover:  #00c98a;
@@ -390,6 +390,7 @@ h3 { font-size: clamp(1.15rem, 2vw, 1.5rem); letter-spacing: -0.02em; }
 
 .trust-label {
   transition: color var(--transition);
+  color: var(--text-secondary);
 }
 
 .trust-item:hover .trust-label {
@@ -443,7 +444,7 @@ h3 { font-size: clamp(1.15rem, 2vw, 1.5rem); letter-spacing: -0.02em; }
   font-weight: 600;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   margin-bottom: 0.85rem;
 }
 
@@ -940,127 +941,6 @@ h3 { font-size: clamp(1.15rem, 2vw, 1.5rem); letter-spacing: -0.02em; }
   transform: translateY(0);
 }
 
-/* ---- Filters Bar ---- */
-.filters-bar {
-  background: rgba(6,6,9,0.8);
-  border-bottom: 1px solid rgba(255,255,255,0.03);
-  padding: 1rem 0;
-  position: sticky;
-  top: var(--navbar-height);
-  z-index: 90;
-  transition: background var(--transition), border-color var(--transition);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-}
-
-.filters-inner {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-/* Search input */
-.search-wrap {
-  position: relative;
-  flex: 1 1 200px;
-  min-width: 160px;
-}
-
-.search-wrap svg {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 16px;
-  height: 16px;
-  color: var(--text-muted);
-  pointer-events: none;
-}
-
-.search-input {
-  width: 100%;
-  padding: 0.6rem 0.85rem 0.6rem 2.25rem;
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: var(--radius-full);
-  background: rgba(255,255,255,0.02);
-  color: var(--text-primary);
-  font-size: 0.85rem;
-  transition: all var(--transition);
-  outline: none;
-}
-
-.search-input:focus {
-  border-color: rgba(var(--accent-rgb), 0.3);
-  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.06);
-}
-
-[data-theme="dark"] .search-input:focus {
-  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.08);
-}
-
-/* Filter selects */
-.filter-select {
-  padding: 0.6rem 2rem 0.6rem 0.85rem;
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: var(--radius-full);
-  background: rgba(255,255,255,0.02);
-  color: var(--text-primary);
-  font-size: 0.85rem;
-  appearance: none;
-  -webkit-appearance: none;
-  cursor: pointer;
-  transition: all var(--transition);
-  outline: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.75rem center;
-}
-
-.filter-select:focus {
-  border-color: rgba(var(--accent-rgb), 0.3);
-  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.06);
-}
-
-/* Filter pills (size/color quick filters) */
-.filter-pills {
-  display: flex;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-}
-
-.pill {
-  padding: 0.4rem 0.9rem;
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: var(--radius-full);
-  font-size: 0.78rem;
-  font-weight: 500;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all var(--transition);
-  white-space: nowrap;
-}
-
-.pill:hover {
-  border-color: rgba(255,255,255,0.15);
-  color: var(--text-primary);
-  background: rgba(255,255,255,0.03);
-}
-
-.pill.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #030d09;
-}
-
-/* Results count */
-.results-info {
-  padding: 1rem 0 0.5rem;
-  color: var(--text-muted);
-  font-size: 0.85rem;
-}
-
 /* ---- Footer Tagline ---- */
 .footer-tagline {
   font-size: 0.82rem;
@@ -1070,249 +950,9 @@ h3 { font-size: clamp(1.15rem, 2vw, 1.5rem); letter-spacing: -0.02em; }
   margin-bottom: 0.25rem;
 }
 
-/* ---- Product Grid ---- */
-.product-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1.25rem;
-  padding: 1.5rem 0 4rem;
-}
+/* Product grid, product card, product detail CSS removed — AI-first flow */
 
-@media (min-width: 640px) {
-  .product-grid { grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
-}
-
-@media (min-width: 768px) {
-  .product-grid { grid-template-columns: repeat(3, 1fr); gap: 1.75rem; }
-}
-
-@media (min-width: 1024px) {
-  .product-grid { grid-template-columns: repeat(4, 1fr); gap: 2rem; }
-}
-
-/* ---- Product Card ---- */
-.product-card {
-  background: rgba(255,255,255,0.02);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  box-shadow: none;
-  border: 1px solid rgba(255,255,255,0.04);
-  cursor: pointer;
-  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
-  position: relative;
-}
-
-.product-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 16px 56px rgba(0,0,0,0.5);
-}
-
-[data-theme="dark"] .product-card:hover,
-.product-card:hover {
-  box-shadow: 0 16px 56px rgba(0,0,0,0.5);
-  border-color: rgba(255,255,255,0.08);
-}
-
-.card-image-wrap {
-  position: relative;
-  aspect-ratio: 3/4;
-  overflow: hidden;
-  background: rgba(255,255,255,0.01);
-}
-
-.card-image-wrap img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 1s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.product-card:hover .card-image-wrap img {
-  transform: scale(1.04);
-}
-
-.card-badge {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding: 0.2rem 0.55rem;
-  border-radius: var(--radius-full);
-  z-index: 2;
-}
-
-.badge-new { background: var(--success); color: #fff; }
-.badge-sale { background: var(--danger); color: #fff; }
-.badge-bestseller { background: var(--warning); color: #fff; }
-.badge-limited { background: var(--accent); color: #fff; }
-
-.card-quick-add {
-  position: absolute;
-  bottom: 14px;
-  left: 50%;
-  transform: translateX(-50%) translateY(40px);
-  background: rgba(6,6,9,0.9);
-  color: var(--text-primary);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: var(--radius-full);
-  padding: 0.6rem 1.5rem;
-  font-size: 0.76rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  opacity: 0;
-  transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
-  z-index: 3;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-.product-card:hover .card-quick-add {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
-
-.card-body {
-  padding: 1.2rem 1.1rem;
-}
-
-.card-name {
-  font-size: 0.86rem;
-  font-weight: 600;
-  margin-bottom: 0.35rem;
-  letter-spacing: -0.015em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--text-primary);
-}
-
-.card-colors {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.color-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 1.5px solid var(--border-color);
-  flex-shrink: 0;
-}
-
-.card-price {
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--accent);
-}
-
-/* Empty state */
-.empty-state {
-  grid-column: 1 / -1;
-  text-align: center;
-  padding: 4rem 1rem;
-  color: var(--text-muted);
-}
-
-.empty-state-icon { font-size: 3rem; margin-bottom: 1rem; }
-.empty-state h3 { color: var(--text-secondary); margin-bottom: 0.5rem; }
-
-/* ---- Product Detail Page ---- */
-.product-page {
-  display: none;
-  min-height: calc(100vh - var(--navbar-height));
-  padding: 2rem 0 4rem;
-}
-
-.product-page.active { display: block; }
-
-.product-page-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: var(--text-secondary);
-  font-size: 0.875rem;
-  font-weight: 500;
-  margin-bottom: 1.5rem;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  transition: color var(--transition);
-}
-
-.product-page-back:hover { color: var(--accent); }
-.product-page-back svg { width: 16px; height: 16px; }
-
-.product-detail-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 2rem;
-}
-
-@media (min-width: 768px) {
-  .product-detail-grid { grid-template-columns: 1fr 1fr; gap: 3rem; }
-}
-
-@media (min-width: 1024px) {
-  .product-detail-grid { grid-template-columns: 55% 1fr; }
-}
-
-/* Product image gallery */
-.product-gallery {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.gallery-main {
-  aspect-ratio: 1;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-}
-
-.gallery-main img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.4s var(--transition);
-}
-
-.gallery-main:hover img { transform: scale(1.04); }
-
-.gallery-thumbs {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.gallery-thumb {
-  width: 72px;
-  height: 72px;
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  cursor: pointer;
-  border: 2px solid transparent;
-  transition: border-color var(--transition);
-  flex-shrink: 0;
-}
-
-.gallery-thumb.active { border-color: var(--accent); }
-
-.gallery-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* Product info */
+/* Shared size/color/qty selectors kept for Design Lab */
 .product-info {
   display: flex;
   flex-direction: column;
@@ -2031,18 +1671,7 @@ h3 { font-size: clamp(1.15rem, 2vw, 1.5rem); letter-spacing: -0.02em; }
   100% { background-position: -200% 0; }
 }
 
-.skeleton-card {
-  background: var(--bg-card);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  border: 1px solid var(--border-color);
-}
-
-.skeleton-img { aspect-ratio: 4/5; }
-.skeleton-body { padding: 0.85rem; display: flex; flex-direction: column; gap: 0.5rem; }
-.skeleton-text-lg { height: 16px; width: 75%; }
-.skeleton-text-sm { height: 12px; width: 45%; }
-.skeleton-price { height: 20px; width: 55%; }
+/* skeleton-card CSS removed — no product grid */
 
 /* ---- Checkout Overlay ---- */
 .checkout-overlay {
@@ -2208,7 +1837,7 @@ footer {
   gap: 0.75rem;
 }
 
-.footer-bottom p { font-size: 0.8rem; color: var(--text-muted); }
+.footer-bottom p { font-size: 0.8rem; color: var(--text-secondary); }
 
 /* ---- View transitions (native app feel) ---- */
 .page-shop, .product-page {
@@ -2256,9 +1885,6 @@ footer {
 @media (max-width: 480px) {
   .hero { padding: 4rem 0 3rem; }
   .hero p { font-size: 0.9rem; }
-  .product-grid { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
-  .card-body { padding: 0.65rem; }
-  .card-name { font-size: 0.82rem; }
   .add-to-cart-row { flex-direction: column; }
   .cart-panel { width: 100vw; }
 }
@@ -2345,89 +1971,7 @@ footer {
 
 .card-stock.out { color: var(--danger); }
 
-/* ============================================================
-   COUNTDOWN SECTION
-   ============================================================ */
-.countdown-section {
-  background: rgba(255,255,255,0.01);
-  border-bottom: 1px solid rgba(255,255,255,0.03);
-  padding: 1.75rem 0;
-  transition: background var(--transition), border-color var(--transition);
-}
-
-[data-theme="dark"] .countdown-section {
-  background: rgba(124,58,237,0.03);
-  border-bottom-color: rgba(124,58,237,0.08);
-}
-
-.countdown-inner {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.countdown-text {
-  flex: 1 1 200px;
-  min-width: 0;
-}
-
-.countdown-eyebrow {
-  display: inline-block;
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  margin-bottom: 0.3rem;
-}
-
-.countdown-text h2 {
-  font-size: 1.2rem;
-  letter-spacing: -0.02em;
-  margin-bottom: 0.1rem;
-}
-
-.countdown-text p {
-  font-size: 0.82rem;
-  color: var(--text-secondary);
-}
-
-.countdown-timer {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  flex-shrink: 0;
-}
-
-.countdown-unit {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 52px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  padding: 0.4rem 0.5rem;
-}
-
-.countdown-unit span {
-  font-size: 1.4rem;
-  font-weight: 800;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  color: var(--accent);
-}
-
-.countdown-unit label {
-  font-size: 0.6rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  margin-top: 0.15rem;
-}
-
+/* Countdown section removed — no real inventory */
 .countdown-sep {
   font-size: 1.4rem;
   font-weight: 800;
@@ -2701,65 +2245,11 @@ footer {
   padding-top: 0.5rem;
 }
 
-/* Design Lab card entry button (on product grid) */
-.card-lab-btn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius-full);
-  background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255,255,255,0.2);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  opacity: 0;
-  transform: scale(0.8);
-  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-  z-index: 4;
-}
-
-.product-card:hover .card-lab-btn {
-  opacity: 1;
-  transform: scale(1);
-}
-
-.card-lab-btn:hover {
-  background: var(--accent);
-  border-color: var(--accent);
-  transform: scale(1.1) !important;
-}
-
-.card-lab-btn svg { width: 15px; height: 15px; }
+/* card-lab-btn, card-lowstock-row CSS removed — product grid removed */
 
 /* ============================================================
    BRAND FEEL UPGRADES
    ============================================================ */
-
-/* Better badge labels (text handled by BADGE_LABELS in app.js) */
-.card-badge {
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 0.22rem 0.6rem;
-  border-radius: var(--radius-full);
-}
-
-/* Low stock warning on cards */
-.card-lowstock-row {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--warning);
-  margin-top: 0.2rem;
-}
 
 /* Enhanced cart item — colored swatch chip */
 .cart-item-swatch {
@@ -2844,14 +2334,9 @@ footer {
   --hype-height: 36px;
 }
 
-.filters-bar {
-  top: calc(var(--navbar-height) + var(--hype-height));
-}
-
 /* Hype banner + print */
 @media print {
-  .hype-banner, .countdown-section, .dl-overlay, .sl-overlay { display: none !important; }
-}
+  .hype-banner, .dl-overlay, .sl-overlay { display: none !important; }
 
 /* ====================================================
    STICKER LAB
@@ -5666,7 +5151,7 @@ footer {
 
 .pricing-anchor-cross {
   font-size: 0.85rem;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   text-decoration: line-through;
   text-decoration-color: rgba(239,68,68,0.5);
 }
@@ -5732,7 +5217,7 @@ footer {
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .pricing-card--popular .pricing-card-label {

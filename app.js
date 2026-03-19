@@ -1,6 +1,6 @@
 /* ============================================================
    PrintPath — Main Application Script
-   Vanilla JS SPA: product grid, product detail, cart, checkout
+   Vanilla JS SPA: cart, checkout, design lab, AI gen, sticker lab
    ============================================================ */
 
 'use strict';
@@ -10,18 +10,7 @@
    ==================================================== */
 const state = {
   products: [],
-  filteredProducts: [],
   cart: [],
-  currentProduct: null,
-  selectedSize: null,
-  selectedColor: null,
-  selectedQty: 1,
-  currentGalleryIndex: 0,
-  activeColorFilter: 'all',
-  activeSizeFilter: 'all',
-  activeBadgeFilter: 'all',
-  activeFeaturedFilter: false,
-  searchQuery: '',
   theme: localStorage.getItem('td-theme') || 'light',
   deferredInstallPrompt: null,
   // Design Lab
@@ -30,7 +19,6 @@ const state = {
   dlSelectedColor: null,
   dlView: 'front',
   dlZoomed: false,
-  countdownInterval: null,
 };
 
 /* ====================================================
@@ -45,27 +33,6 @@ const HYPE_MESSAGES = [
   { icon: '⬡', text: 'PrintPath: Design it. We make it print-perfect.' },
   { icon: '🔒', text: 'Secure checkout powered by Stripe' },
 ];
-
-/* ====================================================
-   FEATURED DROP CONFIG
-   Set dropDate to a future ISO date string.
-   Set productId to a product with featuredDrop:true.
-   ==================================================== */
-const FEATURED_DROP = {
-  productId: 7,
-  dropDate: '2026-03-28T20:00:00',
-};
-
-/* ====================================================
-   BADGE LABELS — human-readable display text
-   ==================================================== */
-const BADGE_LABELS = {
-  new:        'New Drop',
-  bestseller: 'Best Seller',
-  limited:    'Limited',
-  sale:       'Sale',
-  lowstock:   'Low Stock',
-};
 
 /* ====================================================
    STRIPE CONFIG (replace with your actual keys)
@@ -97,36 +64,10 @@ const COLOR_MAP = {
    ==================================================== */
 const $ = id => document.getElementById(id);
 const dom = {
-  // Pages
-  pageShop:        $('page-shop'),
-  pageProduct:     $('page-product'),
   // Navbar
   themeToggle:     $('theme-toggle'),
   cartBtn:         $('cart-btn'),
   cartCount:       $('cart-count'),
-  // Filters
-  searchInput:     $('search-input'),
-  sizeFilter:      $('size-filter'),
-  colorFilter:     $('color-filter'),
-  resultsInfo:     $('results-info'),
-  sizePills:       $('size-pills'),
-  colorPills:      $('color-pills'),
-  // Product grid
-  productGrid:     $('product-grid'),
-  // Product detail
-  pdBack:          $('pd-back'),
-  pdGalleryMain:   $('pd-gallery-main'),
-  pdGalleryThumbs: $('pd-gallery-thumbs'),
-  pdBadge:         $('pd-badge'),
-  pdName:          $('pd-name'),
-  pdPrice:         $('pd-price'),
-  pdDesc:          $('pd-desc'),
-  pdSizeOptions:   $('pd-size-options'),
-  pdColorOptions:  $('pd-color-options'),
-  pdQtyDec:        $('pd-qty-dec'),
-  pdQtyInc:        $('pd-qty-inc'),
-  pdQtyVal:        $('pd-qty-val'),
-  pdAddToCart:     $('pd-add-to-cart'),
   // Cart
   cartOverlay:     $('cart-overlay'),
   cartPanel:       $('cart-panel'),
@@ -149,19 +90,8 @@ const dom = {
   installDismiss:  $('install-dismiss'),
   // Toast
   toastContainer:  $('toast-container'),
-  // Filter additions
-  badgePills:      $('badge-pills'),
-  featuredToggle:  $('featured-toggle'),
   // Hype banner
   hypeTrack:       $('hype-track'),
-  // Countdown
-  countdownSection:$('countdown-section'),
-  cdDays:          $('cd-days'),
-  cdHours:         $('cd-hours'),
-  cdMins:          $('cd-mins'),
-  cdSecs:          $('cd-secs'),
-  cdProductName:   $('countdown-product-name'),
-  cdProductDesc:   $('countdown-product-desc'),
   // Design Lab
   designLabNavBtn: $('design-lab-nav-btn'),
   dlOverlay:       $('design-lab-overlay'),
@@ -196,348 +126,20 @@ async function init() {
   renderCart();
   updateCartCount();
   initHypeBanner();
-  initCountdown();
 }
 
 /* ====================================================
-   LOAD PRODUCTS
+   LOAD PRODUCTS (no grid render — data used by Design Lab)
    ==================================================== */
 async function loadProducts() {
-  // Show skeletons while loading
-  renderSkeletons();
-
   try {
     const res = await fetch('./products.json');
     if (!res.ok) throw new Error('Failed to load products');
     state.products = await res.json();
-    state.filteredProducts = [...state.products];
-    buildFilterOptions();
-    renderProductGrid();
   } catch (err) {
-    console.error('[PrintPath] Error loading products:', err);
-    dom.productGrid.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-state-icon">😢</div>
-        <h3>Couldn't load products</h3>
-        <p>Please check your connection and try again.</p>
-      </div>`;
+    console.warn('[PrintPath] products.json not loaded:', err.message);
+    state.products = [];
   }
-}
-
-/* ---- Skeleton placeholders ---- */
-function renderSkeletons() {
-  dom.productGrid.innerHTML = Array(8).fill(0).map(() => `
-    <div class="skeleton-card">
-      <div class="skeleton skeleton-img"></div>
-      <div class="skeleton-body">
-        <div class="skeleton skeleton-text-lg"></div>
-        <div class="skeleton skeleton-text-sm"></div>
-        <div class="skeleton skeleton-price"></div>
-      </div>
-    </div>`).join('');
-}
-
-/* ====================================================
-   BUILD FILTER OPTIONS
-   ==================================================== */
-function buildFilterOptions() {
-  const allSizes  = [...new Set(state.products.flatMap(p => p.sizes))];
-  const allColors = [...new Set(state.products.flatMap(p => p.colors))];
-  const allBadges = [...new Set(state.products.map(p => p.badge).filter(Boolean))];
-
-  // Size pills
-  dom.sizePills.innerHTML = ['all', ...allSizes].map(s => `
-    <button class="pill${s === 'all' ? ' active' : ''}" data-size="${s}" aria-label="Filter by size ${s}">
-      ${s === 'all' ? 'All Sizes' : s}
-    </button>`).join('');
-
-  // Color pills
-  dom.colorPills.innerHTML = ['all', ...allColors].map(c => `
-    <button class="pill${c === 'all' ? ' active' : ''}" data-color="${c}" aria-label="Filter by color ${c}">
-      ${c === 'all' ? 'All Colors' : c}
-    </button>`).join('');
-
-  // Badge pills
-  dom.badgePills.innerHTML = allBadges.map(b => `
-    <button class="pill" data-badge="${b}" aria-label="Filter by ${BADGE_LABELS[b] || b}">
-      ${BADGE_LABELS[b] || b}
-    </button>`).join('');
-
-  // Rebind pill events
-  dom.sizePills.querySelectorAll('.pill').forEach(btn =>
-    btn.addEventListener('click', () => handleSizePill(btn.dataset.size)));
-  dom.colorPills.querySelectorAll('.pill').forEach(btn =>
-    btn.addEventListener('click', () => handleColorPill(btn.dataset.color)));
-  dom.badgePills.querySelectorAll('.pill').forEach(btn =>
-    btn.addEventListener('click', () => handleBadgePill(btn.dataset.badge)));
-}
-
-/* ====================================================
-   RENDER PRODUCT GRID
-   ==================================================== */
-function renderProductGrid() {
-  const products = state.filteredProducts;
-
-  if (products.length === 0) {
-    dom.productGrid.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-state-icon">🔍</div>
-        <h3>No shirts found</h3>
-        <p>Try adjusting your filters or search query.</p>
-        <button class="btn btn-secondary" onclick="clearFilters()" style="margin-top:1rem">Clear Filters</button>
-      </div>`;
-    dom.resultsInfo.textContent = '0 results';
-    return;
-  }
-
-  dom.resultsInfo.textContent = `${products.length} shirt${products.length !== 1 ? 's' : ''} found`;
-
-  dom.productGrid.innerHTML = products.map(product => {
-    const colorDots = product.colors.map(c =>
-      `<span class="color-dot" style="background:${COLOR_MAP[c] || '#ccc'}" title="${c}"></span>`
-    ).join('');
-
-    const badgeLabel = BADGE_LABELS[product.badge] || product.badge;
-    const badge = product.badge ? `
-      <span class="card-badge badge-${product.badge}">${badgeLabel}</span>` : '';
-
-    const labBtn = `
-      <button class="card-lab-btn" onclick="event.stopPropagation(); openDesignLab(${product.id})"
-        aria-label="Open ${product.name} in Design Lab" title="Design Lab">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
-          <path d="M12 20h9"/>
-          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-        </svg>
-      </button>`;
-
-    const stockRow = (product.stock > 0 && product.stock <= 10) ? `
-      <p class="card-lowstock-row">🔥 Only ${product.stock} left</p>` : '';
-
-    return `
-      <article class="product-card" data-id="${product.id}" role="button" tabindex="0"
-        aria-label="View ${product.name} — $${product.price.toFixed(2)}"
-        onclick="openProductPage(${product.id})"
-        onkeydown="if(event.key==='Enter') openProductPage(${product.id})">
-        <div class="card-image-wrap">
-          ${badge}
-          ${labBtn}
-          <img
-            src="${product.images[0]}"
-            alt="${product.name}"
-            loading="lazy"
-            decoding="async"
-            width="400" height="500"
-          />
-          <button class="card-quick-add" onclick="event.stopPropagation(); quickAddToCart(${product.id})"
-            aria-label="Quick add ${product.name} to cart">
-            + Quick Add
-          </button>
-        </div>
-        <div class="card-body">
-          <h3 class="card-name">${product.name}</h3>
-          <div class="card-colors" aria-label="Available colors">${colorDots}</div>
-          <p class="card-price">$${product.price.toFixed(2)}</p>
-          ${stockRow}
-        </div>
-      </article>`;
-  }).join('');
-}
-
-/* ====================================================
-   FILTER LOGIC
-   ==================================================== */
-function applyFilters() {
-  const q        = state.searchQuery.toLowerCase();
-  const size     = state.activeSizeFilter;
-  const color    = state.activeColorFilter;
-  const badge    = state.activeBadgeFilter;
-  const featured = state.activeFeaturedFilter;
-
-  state.filteredProducts = state.products.filter(p => {
-    const matchSearch   = !q || p.name.toLowerCase().includes(q) ||
-                          p.description.toLowerCase().includes(q) ||
-                          p.colors.some(c => c.toLowerCase().includes(q));
-    const matchSize     = size    === 'all' || p.sizes.includes(size);
-    const matchColor    = color   === 'all' || p.colors.includes(color);
-    const matchBadge    = badge   === 'all' || p.badge === badge;
-    const matchFeatured = !featured || p.featuredDrop === true;
-    return matchSearch && matchSize && matchColor && matchBadge && matchFeatured;
-  });
-
-  renderProductGrid();
-}
-
-function handleSizePill(size) {
-  state.activeSizeFilter = size;
-  dom.sizePills.querySelectorAll('.pill').forEach(b => {
-    b.classList.toggle('active', b.dataset.size === size);
-  });
-  applyFilters();
-}
-
-function handleColorPill(color) {
-  state.activeColorFilter = color;
-  dom.colorPills.querySelectorAll('.pill').forEach(b => {
-    b.classList.toggle('active', b.dataset.color === color);
-  });
-  applyFilters();
-}
-
-function handleBadgePill(badge) {
-  // Clicking the active badge deselects it
-  state.activeBadgeFilter = state.activeBadgeFilter === badge ? 'all' : badge;
-  dom.badgePills.querySelectorAll('.pill').forEach(b => {
-    b.classList.toggle('active', b.dataset.badge === state.activeBadgeFilter);
-  });
-  applyFilters();
-}
-
-function clearFilters() {
-  state.searchQuery          = '';
-  state.activeSizeFilter     = 'all';
-  state.activeColorFilter    = 'all';
-  state.activeBadgeFilter    = 'all';
-  state.activeFeaturedFilter = false;
-  dom.searchInput.value      = '';
-  dom.sizePills.querySelectorAll('.pill').forEach(b =>
-    b.classList.toggle('active', b.dataset.size === 'all'));
-  dom.colorPills.querySelectorAll('.pill').forEach(b =>
-    b.classList.toggle('active', b.dataset.color === 'all'));
-  dom.badgePills.querySelectorAll('.pill').forEach(b =>
-    b.classList.remove('active'));
-  dom.featuredToggle.classList.remove('active');
-  applyFilters();
-}
-
-/* ====================================================
-   PRODUCT DETAIL PAGE
-   ==================================================== */
-function openProductPage(id) {
-  const product = state.products.find(p => p.id === id);
-  if (!product) return;
-
-  state.currentProduct = product;
-  state.selectedSize   = null;
-  state.selectedColor  = null;
-  state.selectedQty    = 1;
-  state.currentGalleryIndex = 0;
-
-  // Populate fields
-  dom.pdName.textContent  = product.name;
-  dom.pdPrice.textContent = `$${product.price.toFixed(2)}`;
-  dom.pdDesc.textContent  = product.description;
-
-  // Badge
-  dom.pdBadge.innerHTML = product.badge
-    ? `<span class="card-badge badge-${product.badge}">${product.badge}</span>`
-    : '';
-
-  // Gallery
-  renderGallery(product);
-
-  // Sizes
-  dom.pdSizeOptions.innerHTML = product.sizes.map(s => `
-    <button class="size-btn" data-size="${s}" aria-label="Select size ${s}"
-      onclick="selectSize(this, '${s}')">${s}</button>`).join('');
-
-  // Colors
-  dom.pdColorOptions.innerHTML = product.colors.map(c => `
-    <button class="color-btn" data-color="${c}"
-      style="background:${COLOR_MAP[c] || '#ccc'}; border-color:${COLOR_MAP[c] || '#ccc'}"
-      aria-label="Select color ${c}" title="${c}"
-      onclick="selectColor(this, '${c}')"></button>`).join('');
-
-  // Quantity
-  dom.pdQtyVal.textContent = 1;
-
-  // Switch views with native-feel slide transition
-  if (typeof PP !== 'undefined' && !PP.prefersReducedMotion()) {
-    PP.transitionToProduct(dom.pageShop, dom.pageProduct);
-  } else {
-    dom.pageShop.style.display = 'none';
-    dom.pageProduct.style.display = 'block';
-    window.scrollTo({ top: 0 });
-  }
-
-  // Update browser history
-  history.pushState({ page: 'product', id }, '', `#product-${id}`);
-}
-
-function closeProductPage() {
-  if (typeof PP !== 'undefined' && !PP.prefersReducedMotion()) {
-    PP.transitionToShop(dom.pageProduct, dom.pageShop);
-  } else {
-    dom.pageProduct.style.display = 'none';
-    dom.pageShop.style.display = 'block';
-    window.scrollTo({ top: 0 });
-  }
-
-  history.pushState({ page: 'shop' }, '', window.location.pathname);
-}
-
-/* ---- Gallery ---- */
-function renderGallery(product) {
-  const mainImg = dom.pdGalleryMain.querySelector('img');
-  mainImg.src = product.images[0];
-  mainImg.alt = product.name;
-
-  dom.pdGalleryThumbs.innerHTML = product.images.map((img, i) => `
-    <div class="gallery-thumb ${i === 0 ? 'active' : ''}" data-index="${i}"
-      onclick="switchGalleryImage(${i})" role="button" tabindex="0"
-      aria-label="View image ${i + 1}">
-      <img src="${img}" alt="${product.name} view ${i + 1}" loading="lazy" decoding="async" />
-    </div>`).join('');
-}
-
-function switchGalleryImage(index) {
-  const product = state.currentProduct;
-  const mainImg = dom.pdGalleryMain.querySelector('img');
-  mainImg.style.opacity = '0';
-  mainImg.style.transform = 'scale(0.96)';
-  setTimeout(() => {
-    mainImg.src = product.images[index];
-    mainImg.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
-    mainImg.style.opacity = '1';
-    mainImg.style.transform = 'scale(1)';
-  }, 150);
-
-  dom.pdGalleryThumbs.querySelectorAll('.gallery-thumb').forEach((t, i) =>
-    t.classList.toggle('active', i === index));
-  state.currentGalleryIndex = index;
-}
-
-/* ---- Size / Color selectors ---- */
-function selectSize(btn, size) {
-  state.selectedSize = size;
-  dom.pdSizeOptions.querySelectorAll('.size-btn').forEach(b =>
-    b.classList.toggle('selected', b === btn));
-}
-
-function selectColor(btn, color) {
-  state.selectedColor = color;
-  dom.pdColorOptions.querySelectorAll('.color-btn').forEach(b =>
-    b.classList.toggle('selected', b === btn));
-}
-
-/* ---- Quantity ---- */
-function changeQty(delta) {
-  state.selectedQty = Math.max(1, Math.min(99, state.selectedQty + delta));
-  dom.pdQtyVal.textContent = state.selectedQty;
-}
-
-/* ====================================================
-   CATEGORY FILTER (homepage category section)
-   ==================================================== */
-function filterByCategory(category) {
-  // Scroll to the product grid and apply a search filter
-  if (dom.searchInput) {
-    dom.searchInput.value = category;
-    state.searchQuery = category;
-    applyFilters();
-  }
-  const grid = document.getElementById('product-grid');
-  if (grid) grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 /* ====================================================
@@ -547,24 +149,7 @@ function quickAddToCart(id) {
   const product = state.products.find(p => p.id === id);
   if (!product) return;
   if (typeof ppSound !== 'undefined') ppSound.play('thud');
-  // Use first available size/color as default for quick add
   addToCart(product, product.sizes[0], product.colors[0], 1);
-}
-
-function addToCartFromDetail() {
-  const product = state.currentProduct;
-  if (!product) return;
-
-  if (!state.selectedSize) {
-    showToast('⚠️ Please select a size', 'warning');
-    // Shake size buttons
-    dom.pdSizeOptions.style.animation = 'none';
-    dom.pdSizeOptions.offsetHeight; // reflow
-    dom.pdSizeOptions.style.animation = 'countBounce 0.4s ease';
-    return;
-  }
-
-  addToCart(product, state.selectedSize, state.selectedColor, state.selectedQty);
 }
 
 function addToCart(product, size, color, qty) {
@@ -592,13 +177,6 @@ function addToCart(product, size, color, qty) {
   openCart();
   showToast(`✅ ${product.name} added to cart`, 'success');
   if (typeof ppSound !== 'undefined') ppSound.play('thud');
-
-  // Animate the add-to-cart button
-  if (dom.pdAddToCart) {
-    dom.pdAddToCart.classList.remove('btn-bounce');
-    void dom.pdAddToCart.offsetWidth; // reflow
-    dom.pdAddToCart.classList.add('btn-bounce');
-  }
 }
 
 function removeFromCart(key) {
@@ -1110,26 +688,6 @@ function initHypeBanner() {
 }
 
 /* ====================================================
-   FEATURED DROP COUNTDOWN
-   ==================================================== */
-function initCountdown() {
-  // Countdown section is disabled — no real inventory to back it
-  // To re-enable: set a real dropDate and a product with featuredDrop:true in products.json
-  if (dom.countdownSection) dom.countdownSection.style.display = 'none';
-}
-
-/* Scroll to featured drop products */
-function scrollToFeatured() {
-  state.activeFeaturedFilter = true;
-  if (dom.featuredToggle) dom.featuredToggle.classList.add('active');
-  applyFilters();
-  closeDesignLab();
-  setTimeout(() => {
-    if (dom.productGrid) dom.productGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, 100);
-}
-
-/* ====================================================
    BROWSER BACK BUTTON
    ==================================================== */
 window.addEventListener('popstate', e => {
@@ -1174,14 +732,6 @@ window.addEventListener('popstate', e => {
     }
     return;
   }
-  if (dom.pageProduct.style.display === 'block') {
-    if (typeof PP !== 'undefined' && !PP.prefersReducedMotion()) {
-      PP.transitionToShop(dom.pageProduct, dom.pageShop);
-    } else {
-      dom.pageProduct.style.display = 'none';
-      dom.pageShop.style.display   = 'block';
-    }
-  }
 });
 
 /* ====================================================
@@ -1206,35 +756,6 @@ function bindEvents() {
   });
   dom.checkoutStripe.addEventListener('click', redirectToStripe);
 
-  // Product page back
-  dom.pdBack.addEventListener('click', closeProductPage);
-
-  // Product page add to cart
-  dom.pdAddToCart.addEventListener('click', addToCartFromDetail);
-
-  // Quantity controls
-  dom.pdQtyDec.addEventListener('click', () => changeQty(-1));
-  dom.pdQtyInc.addEventListener('click', () => changeQty(+1));
-
-  // Search (debounced)
-  let searchDebounce;
-  dom.searchInput.addEventListener('input', e => {
-    clearTimeout(searchDebounce);
-    searchDebounce = setTimeout(() => {
-      state.searchQuery = e.target.value.trim();
-      applyFilters();
-    }, 280);
-  });
-
-  // Clear search on Escape
-  dom.searchInput.addEventListener('keydown', e => {
-    if (e.key === 'Escape') {
-      dom.searchInput.value = '';
-      state.searchQuery = '';
-      applyFilters();
-    }
-  });
-
   // PWA install
   dom.installBtn.addEventListener('click', triggerInstall);
   dom.installDismiss.addEventListener('click', dismissInstallBanner);
@@ -1245,22 +766,20 @@ function bindEvents() {
   if (cardBtn)     cardBtn.addEventListener('click', triggerInstall);
   if (cardDismiss) cardDismiss.addEventListener('click', dismissInstallBanner);
 
-  // Keyboard: close panels on Escape (Sticker Lab → Design Lab → checkout → cart → product)
+  // Keyboard: close panels on Escape (Sticker Lab → Design Lab → checkout → cart)
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       if (typeof stickerState !== 'undefined' && stickerState.open) closeStickerLab();
       else if (dom.dlOverlay && dom.dlOverlay.style.display === 'flex') closeDesignLab();
       else if (dom.checkoutOverlay.classList.contains('open')) closeCheckout();
       else if (dom.cartPanel.classList.contains('open')) closeCart();
-      else if (dom.pageProduct.style.display === 'block') closeProductPage();
     }
   });
 
-  // Design Lab — open from navbar button (first featured product or first product)
+  // Design Lab — open from navbar button (opens lab directly)
   if (dom.designLabNavBtn) {
     dom.designLabNavBtn.addEventListener('click', () => {
-      const featured = state.products.find(p => p.featuredDrop) || state.products[0];
-      if (featured) openDesignLab(featured.id);
+      openDesignLab(1);
     });
   }
 
@@ -1272,15 +791,6 @@ function bindEvents() {
   });
   if (dom.dlAddToCart)  dom.dlAddToCart.addEventListener('click', dlAddToCartFromLab);
   if (dom.dlZoomWrap)   dom.dlZoomWrap.addEventListener('click', dlToggleZoom);
-
-  // Featured drop toggle
-  if (dom.featuredToggle) {
-    dom.featuredToggle.addEventListener('click', () => {
-      state.activeFeaturedFilter = !state.activeFeaturedFilter;
-      dom.featuredToggle.classList.toggle('active', state.activeFeaturedFilter);
-      applyFilters();
-    });
-  }
 }
 
 /* ====================================================

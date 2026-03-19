@@ -29,21 +29,21 @@
   <link rel="icon" type="image/png" sizes="16x16" href="icons/icon-72.png" />
 
   <!-- Google Fonts — Inter -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
 
   <!-- Stylesheet -->
   <link rel="stylesheet" href="styles.css" />
 
-  <!-- Micro Sound Engine (loaded first so ppSound is available to all scripts) -->
-  <script src="pp-sounds.js"></script>
+  <!-- Micro Sound Engine -->
+  <script src="pp-sounds.js" defer></script>
 
   <!-- Native App Feel Engine (transitions, gestures, micro-animations) -->
-  <script src="pp-transitions.js"></script>
+  <script src="pp-transitions.js" defer></script>
 
   <!-- OpenAI Prompt Cleaner (optional — falls back to local regex) -->
-  <script src="pp-openai.js"></script>
+  <script src="pp-openai.js" defer></script>
 
   <title>PrintPath — From idea to production.</title>
 </head>
@@ -464,172 +464,12 @@
     </div>
   </section>
 
-  <!-- Featured Drop Countdown — disabled (no real inventory) -->
-  <section class="countdown-section" id="countdown-section" style="display:none" aria-hidden="true">
-    <div class="container">
-      <div class="countdown-inner">
-        <div class="countdown-text">
-          <span class="countdown-eyebrow">⚡ Limited Drop</span>
-          <h2 id="countdown-product-name">Street Art Drop</h2>
-          <p id="countdown-product-desc">Drops in:</p>
-        </div>
-        <div class="countdown-timer" aria-live="polite">
-          <div class="countdown-unit"><span id="cd-days">00</span><label>Days</label></div>
-          <div class="countdown-sep">:</div>
-          <div class="countdown-unit"><span id="cd-hours">00</span><label>Hours</label></div>
-          <div class="countdown-sep">:</div>
-          <div class="countdown-unit"><span id="cd-mins">00</span><label>Mins</label></div>
-          <div class="countdown-sep">:</div>
-          <div class="countdown-unit"><span id="cd-secs">00</span><label>Secs</label></div>
-        </div>
-        <button class="btn btn-primary" onclick="scrollToFeatured()" aria-label="Shop the featured drop">Shop the Drop</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- Filters Bar — hidden (AI-first flow, no stock catalog) -->
-  <div class="filters-bar" role="search" aria-label="Filter products" style="display:none" aria-hidden="true">
-    <div class="container">
-      <div class="filters-inner">
-
-        <!-- Search -->
-        <div class="search-wrap">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-          </svg>
-          <input
-            id="search-input"
-            type="search"
-            class="search-input"
-            placeholder="Search tees…"
-            aria-label="Search products"
-            autocomplete="off"
-            spellcheck="false"
-          />
-        </div>
-
-        <!-- Size filter pills -->
-        <div id="size-pills" class="filter-pills" role="group" aria-label="Filter by size"></div>
-
-        <!-- Color filter pills -->
-        <div id="color-pills" class="filter-pills" role="group" aria-label="Filter by color"></div>
-
-        <!-- Badge filter pills -->
-        <div id="badge-pills" class="filter-pills" role="group" aria-label="Filter by badge"></div>
-
-        <!-- Featured drop toggle -->
-        <button id="featured-toggle" class="pill" data-featured="false" aria-label="Show featured drops only">
-          ⚡ Drops
-        </button>
-
-      </div>
-    </div>
-  </div>
-
-  <!-- Product Grid — hidden (AI-first flow, no stock catalog) -->
-  <div class="container" style="display:none" aria-hidden="true">
-    <p id="results-info" class="results-info" aria-live="polite" aria-atomic="true"></p>
-    <div id="product-grid" class="product-grid" role="list" aria-label="Products"></div>
-  </div>
+  <!-- Product catalog and countdown sections removed (AI-first flow) -->
 
 </main>
 
 
-<!-- ============================================================
-     PRODUCT DETAIL PAGE (hidden by default)
-     ============================================================ -->
-<main id="page-product" class="product-page" aria-label="Product detail" style="display:none">
-  <div class="container">
-
-    <!-- Back button -->
-    <button id="pd-back" class="product-page-back" aria-label="Back to shop">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="m15 18-6-6 6-6"/>
-      </svg>
-      Back to Shop
-    </button>
-
-    <!-- Product layout: image + info -->
-    <div class="product-detail-grid">
-
-      <!-- Image gallery -->
-      <div class="product-gallery" role="region" aria-label="Product images">
-        <div id="pd-gallery-main" class="gallery-main">
-          <img src="" alt="" loading="eager" decoding="async" width="600" height="600" />
-        </div>
-        <div id="pd-gallery-thumbs" class="gallery-thumbs" role="list" aria-label="Thumbnail images"></div>
-      </div>
-
-      <!-- Product info -->
-      <div class="product-info">
-
-        <!-- Badge -->
-        <div id="pd-badge" class="product-info-badge"></div>
-
-        <!-- Name & price -->
-        <h1 id="pd-name" class="product-name"></h1>
-        <p id="pd-price" class="product-info-price"></p>
-
-        <!-- Description -->
-        <p id="pd-desc" class="product-info-desc"></p>
-
-        <div class="divider"></div>
-
-        <!-- Size selector -->
-        <div role="group" aria-labelledby="size-label">
-          <p id="size-label" class="selector-label">Select Size</p>
-          <div id="pd-size-options" class="size-options" role="radiogroup" aria-label="Sizes"></div>
-        </div>
-
-        <!-- Color selector -->
-        <div role="group" aria-labelledby="color-label">
-          <p id="color-label" class="selector-label">Select Color</p>
-          <div id="pd-color-options" class="color-options" role="radiogroup" aria-label="Colors"></div>
-        </div>
-
-        <div class="divider"></div>
-
-        <!-- Quantity -->
-        <div>
-          <p class="selector-label">How many are you making?</p>
-          <div class="quantity-wrap" role="group" aria-label="Select quantity">
-            <button id="pd-qty-dec" class="qty-btn" aria-label="Decrease quantity">−</button>
-            <span id="pd-qty-val" class="qty-value" aria-live="polite" aria-atomic="true">1</span>
-            <button id="pd-qty-inc" class="qty-btn" aria-label="Increase quantity">+</button>
-          </div>
-        </div>
-
-        <!-- Add to cart -->
-        <div class="add-to-cart-row">
-          <button id="pd-add-to-cart" class="btn btn-neon btn-lg" aria-label="Add to cart">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-            </svg>
-            Continue
-          </button>
-          <button class="btn btn-secondary" aria-label="Save to wishlist" title="Save">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-            </svg>
-          </button>
-        </div>
-
-        <!-- Trust badges -->
-        <div style="display:flex; gap:1rem; flex-wrap:wrap; margin-top:0.5rem;">
-          <span style="font-size:0.75rem; color:var(--text-muted); display:flex; align-items:center; gap:0.3rem;">🚚 Free shipping over $50</span>
-          <span style="font-size:0.75rem; color:var(--text-muted); display:flex; align-items:center; gap:0.3rem;">↩️ 30-day returns</span>
-          <span style="font-size:0.75rem; color:var(--text-muted); display:flex; align-items:center; gap:0.3rem;">🔒 Secure checkout</span>
-        </div>
-        <!-- Print quality reassurance -->
-        <div class="print-quality-notice">
-          <span class="pq-icon">🎯</span>
-          <span>This design will be optimized to <strong>300 DPI</strong> before printing</span>
-        </div>
-
-      </div><!-- /product-info -->
-    </div><!-- /product-detail-grid -->
-  </div>
-</main>
+<!-- Product detail page removed (AI-first flow — no stock catalog) -->
 
 
 <!-- ============================================================
@@ -1695,9 +1535,8 @@
 
     <div class="footer-bottom">
       <p>© 2026 PrintPath. All rights reserved.</p>
-      <p style="display:flex; gap:1rem;">
-        <a href="#" style="color:var(--text-muted); font-size:0.8rem;">Privacy</a>
-        <a href="#" style="color:var(--text-muted); font-size:0.8rem;">Terms</a>
+      <p style="display:flex; gap:1rem; color:var(--text-secondary); font-size:0.8rem;">
+        Privacy Policy &amp; Terms — contact <a href="mailto:hello@printpath.co" style="color:inherit;">hello@printpath.co</a>
       </p>
     </div>
   </div>
