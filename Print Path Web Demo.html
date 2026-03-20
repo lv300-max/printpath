@@ -1103,6 +1103,83 @@ body.popup-mode .popup-header { display: flex; }
 
 .ed-sep { width: 1px; height: 24px; background: rgba(255,255,255,0.08); flex-shrink: 0; margin: 0 2px; }
 
+/* Front / Back side tabs */
+.ed-side-tabs {
+  display: flex;
+  gap: 4px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-s);
+  padding: 3px;
+}
+.ed-side-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 5px 14px;
+  border-radius: 7px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--text3);
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+.ed-side-tab.active {
+  background: linear-gradient(135deg, #00ff9c22, #00e0ff18);
+  color: var(--green);
+  box-shadow: 0 0 10px rgba(0,255,156,0.2);
+  border: 1px solid rgba(0,255,156,0.2);
+}
+.ed-side-tab .side-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--text3);
+  transition: background 0.2s;
+}
+.ed-side-tab.active .side-dot { background: var(--green); box-shadow: 0 0 6px rgba(0,255,156,0.7); }
+.ed-side-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text3);
+  padding: 3px 0;
+  text-align: center;
+}
+/* Saved design restore banner */
+.saved-restore {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: rgba(0,255,156,0.07);
+  border: 1px solid rgba(0,255,156,0.2);
+  border-radius: var(--radius-s);
+  padding: 7px 12px;
+  font-size: 0.72rem;
+  color: var(--green);
+  margin-bottom: 6px;
+  animation: fadeUp 0.4s var(--ease);
+}
+.saved-restore button {
+  background: rgba(0,255,156,0.15);
+  border: 1px solid rgba(0,255,156,0.25);
+  border-radius: 6px;
+  color: var(--green);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.saved-restore button:hover { background: rgba(0,255,156,0.28); }
+
 /* Canvas wrap */
 .ed-canvas-wrap {
   position: relative;
@@ -1360,7 +1437,17 @@ body.popup-mode .popup-header { display: flex; }
       <!-- ── DESIGN EDITOR ────────────────────────────────── -->
       <div class="editor-shell">
 
-        <!-- Toolbar -->
+        <!-- Side switch -->
+        <div class="ed-side-tabs">
+          <button class="ed-side-tab active" id="tab-front" onclick="edSwitchSide('front')">
+            <span class="side-dot"></span> Front
+          </button>
+          <button class="ed-side-tab" id="tab-back" onclick="edSwitchSide('back')">
+            <span class="side-dot"></span> Back
+          </button>
+        </div>
+
+      <!-- Toolbar -->
         <div class="ed-toolbar">
           <button class="ed-btn primary" onclick="edAddText()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
@@ -1398,6 +1485,7 @@ body.popup-mode .popup-header { display: flex; }
         <div class="ed-canvas-wrap" id="ed-canvas-wrap">
           <canvas id="ed-canvas"></canvas>
         </div>
+        <div class="ed-side-label" id="ed-side-label">✦ Editing FRONT — switch above for back</div>
 
         <!-- Properties panel -->
         <div class="ed-props inactive" id="ed-props">
@@ -1506,24 +1594,32 @@ body.popup-mode .popup-header { display: flex; }
       </div>
       <div class="embed-code">
         <button class="copy-code-btn" onclick="copyEmbedCode(this)">Copy</button>
-        <span id="embed-code-text">&lt;!-- PrintPath Design Button --&gt;
+        <span id="embed-code-text">&lt;!-- PrintPath Design Button (Level 2) --&gt;
 &lt;button id="pp-launch"&gt;Design Your Shirt&lt;/button&gt;
-&lt;img id="pp-preview" style="display:none;max-width:200px"&gt;
+&lt;img id="pp-front" style="display:none;max-width:200px" alt="Front"&gt;
+&lt;img id="pp-back"  style="display:none;max-width:200px" alt="Back"&gt;
 &lt;script&gt;
 document.getElementById("pp-launch").onclick = () =&gt; {
-  const w = window.open(
-    "https://printpath-ai.netlify.app?mode=popup&amp;shop=yourshop",
-    "PrintPathEditor", "width=1200,height=800"
+  window.open(
+    "https://printpath-ai.netlify.app?mode=popup&amp;shop=yourshop&amp;product=shirt",
+    "PrintPathEditor", "width=1200,height=860"
   );
 };
 window.addEventListener("message", e =&gt; {
-  if (e.data.type === "PRINTPATH_DESIGN") {
-    const img = document.getElementById("pp-preview");
-    img.src = e.data.image;
-    img.style.display = "block";
-    window.selectedDesign = e.data;
-  }
+  if (e.data.type !== "PRINTPATH_DESIGN") return;
+  const d = e.data;
+  // Show previews
+  if (d.image.front) { document.getElementById("pp-front").src = d.image.front; document.getElementById("pp-front").style.display = "block"; }
+  if (d.image.back)  { document.getElementById("pp-back").src  = d.image.back;  document.getElementById("pp-back").style.display  = "block"; }
+  // Store full design (image + layers JSON)
+  localStorage.setItem("pp_design", JSON.stringify(d));
+  window.ppSelectedDesign = d;
 });
+// Call this when user clicks Add to Cart
+function ppAddToCart(productId) {
+  const d = JSON.parse(localStorage.getItem("pp_design") || "null") || window.ppSelectedDesign;
+  return { productId, designImage: d?.image?.front, designImageBack: d?.image?.back, designMeta: d?.meta };
+}
 &lt;/script&gt;</span>
       </div>
     </div>
@@ -1824,19 +1920,40 @@ function updatePrice() {
 }
 
 /* ============================================================
-   DESIGN EDITOR — Fabric.js
+   DESIGN EDITOR — Fabric.js  (Level 2: front/back + save/reload)
 ============================================================ */
-let edCanvas = null;
-let edReady  = false;
+let edCanvas    = null;
+let edReady     = false;
+let edSide      = 'front';       // 'front' | 'back'
+let edFrontJSON = null;          // persisted JSON for front
+let edBackJSON  = null;          // persisted JSON for back
+
+/* Product → canvas dimensions */
+const PRODUCT_SIZES = {
+  shirt:   { w: 400, h: 500 },
+  hoodie:  { w: 400, h: 480 },
+  sticker: { w: 400, h: 400 },
+  default: { w: 400, h: 400 },
+};
+
+function edGetProductSize() {
+  const params  = new URLSearchParams(window.location.search);
+  const product = (params.get('product') || 'default').toLowerCase();
+  return PRODUCT_SIZES[product] || PRODUCT_SIZES.default;
+}
 
 function edInit() {
   if (edReady) return;
-  const wrap  = document.getElementById('ed-canvas-wrap');
-  const size  = Math.min(wrap.clientWidth || 360, 400);
+  const wrap = document.getElementById('ed-canvas-wrap');
+  const { w, h } = edGetProductSize();
+  const maxW = Math.min(wrap.clientWidth || 360, w);
+  const scale = maxW / w;
+  const cW = Math.round(w * scale);
+  const cH = Math.round(h * scale);
 
   edCanvas = new fabric.Canvas('ed-canvas', {
-    width:           size,
-    height:          size,
+    width:           cW,
+    height:          cH,
     backgroundColor: '#1a1a2a',
     selection:       true,
   });
@@ -1860,12 +1977,138 @@ function edInit() {
   });
 
   // Enable send button as soon as anything is on canvas
-  edCanvas.on('object:added', edCheckSendReady);
+  edCanvas.on('object:added',   edCheckSendReady);
+  edCanvas.on('object:removed', edCheckSendReady);
 
   // Draw safe-zone border
   edDrawSafeZone();
-
   updatePrice();
+
+  // Auto-save canvas to localStorage on every modification
+  edCanvas.on('object:added',    edAutoSave);
+  edCanvas.on('object:removed',  edAutoSave);
+  edCanvas.on('object:modified', edAutoSave);
+
+  // Check for saved design and offer restore (only on first load, not popup)
+  if (!document.body.classList.contains('popup-mode')) {
+    edCheckSavedDesign();
+  }
+}
+
+/* ── SIDE SWITCH ── */
+function edSwitchSide(side) {
+  if (!edReady || side === edSide) return;
+
+  // Save current side JSON before switching
+  edSaveCurrentSideJSON();
+
+  edSide = side;
+
+  // Update tab UI
+  document.getElementById('tab-front').classList.toggle('active', side === 'front');
+  document.getElementById('tab-back').classList.toggle('active',  side === 'back');
+  const label = document.getElementById('ed-side-label');
+  if (label) label.textContent = `✦ Editing ${side.toUpperCase()} — switch above for ${side === 'front' ? 'back' : 'front'}`;
+
+  // Load JSON for new side (or fresh canvas)
+  const json = side === 'front' ? edFrontJSON : edBackJSON;
+  edCanvas.clear();
+  edCanvas.backgroundColor = '#1a1a2a';
+  if (json) {
+    edCanvas.loadFromJSON(json, () => {
+      edDrawSafeZone();
+      edCanvas.renderAll();
+      edRefreshLayers();
+    });
+  } else {
+    edDrawSafeZone();
+    edCanvas.renderAll();
+    edRefreshLayers();
+  }
+  edCheckSendReady();
+}
+
+function edSaveCurrentSideJSON() {
+  if (!edReady) return;
+  const json = edCanvas.toJSON(['_ppSafeZone', 'excludeFromExport']);
+  if (edSide === 'front') edFrontJSON = json;
+  else                    edBackJSON  = json;
+}
+
+/* ── AUTO-SAVE to localStorage ── */
+function edAutoSave() {
+  if (!edReady) return;
+  edSaveCurrentSideJSON();
+  try {
+    const payload = {
+      front:     edFrontJSON,
+      back:      edBackJSON,
+      product:   new URLSearchParams(window.location.search).get('product') || 'default',
+      savedAt:   Date.now(),
+      version:   'v2',
+    };
+    localStorage.setItem('pp_design_draft', JSON.stringify(payload));
+  } catch(e) { /* storage quota — silently ignore */ }
+}
+
+/* ── RESTORE saved design banner ── */
+function edCheckSavedDesign() {
+  try {
+    const raw = localStorage.getItem('pp_design_draft');
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    const age = Date.now() - (saved.savedAt || 0);
+    if (age > 7 * 24 * 3600 * 1000) { localStorage.removeItem('pp_design_draft'); return; }
+
+    // Show restore banner
+    const shell = document.querySelector('.editor-shell');
+    if (!shell) return;
+    const banner = document.createElement('div');
+    banner.className = 'saved-restore';
+    const rel = age < 3600000 ? `${Math.round(age/60000)}m ago`
+              : age < 86400000 ? `${Math.round(age/3600000)}h ago`
+              : `${Math.round(age/86400000)}d ago`;
+    banner.innerHTML = `<span>✦ Saved design found <span style="color:var(--text3)">(${rel})</span></span>
+      <div style="display:flex;gap:6px">
+        <button onclick="edRestoreSaved()">Restore</button>
+        <button onclick="edClearSaved(this.parentElement.parentElement)" style="background:rgba(248,113,113,0.1);border-color:rgba(248,113,113,0.25);color:var(--danger)">Discard</button>
+      </div>`;
+    shell.insertBefore(banner, shell.firstChild);
+  } catch(e) {}
+}
+
+function edRestoreSaved() {
+  try {
+    const raw = localStorage.getItem('pp_design_draft');
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+
+    // Store front/back JSON
+    edFrontJSON = saved.front || null;
+    edBackJSON  = saved.back  || null;
+
+    // Load front first (current side)
+    const json = edSide === 'front' ? edFrontJSON : edBackJSON;
+    if (json) {
+      edCanvas.loadFromJSON(json, () => {
+        edDrawSafeZone();
+        edCanvas.renderAll();
+        edRefreshLayers();
+        edCheckSendReady();
+      });
+    }
+
+    // Remove banner
+    const banner = document.querySelector('.saved-restore');
+    if (banner) banner.remove();
+    toast('Design restored ✓', 'g');
+  } catch(e) { toast('Could not restore design', 'd'); }
+}
+
+function edClearSaved(banner) {
+  localStorage.removeItem('pp_design_draft');
+  if (banner) banner.remove();
+  toast('Draft cleared', 'w');
 }
 
 function edDrawSafeZone() {
@@ -2469,7 +2712,7 @@ function toast(msg, type) {
 }
 
 /* ============================================================
-   POPUP MODE — partner shop integration
+   POPUP MODE — partner shop integration  (Level 2)
 ============================================================ */
 (function detectPopupMode() {
   const params = new URLSearchParams(window.location.search);
@@ -2479,17 +2722,16 @@ function toast(msg, type) {
   document.body.classList.add('popup-mode');
 
   const shop = params.get('shop') || 'your shop';
-  // Capitalise shop name for display
   const shopDisplay = shop.charAt(0).toUpperCase() + shop.slice(1).replace(/-/g,' ');
+
   document.addEventListener('DOMContentLoaded', () => {
     const label = document.getElementById('popup-shop-label');
     if (label) label.textContent = shopDisplay;
-  });
 
-  // In popup mode, skip login screen entirely — editor is public
-  document.addEventListener('DOMContentLoaded', () => {
+    // Skip login — editor is public in popup mode
     const ls = document.getElementById('login-screen');
     if (ls) ls.classList.add('hidden');
+
     setTimeout(() => {
       edInit();
       updatePrice();
@@ -2497,59 +2739,155 @@ function toast(msg, type) {
   });
 })();
 
-/* Export design → send to opener shop via postMessage */
+/* ── EXPORT DESIGN → shop via postMessage (Level 2 payload) ── */
 function exportDesignToShop() {
   if (!edReady) return;
-  const hasObjects = edCanvas.getObjects().filter(o => !o._ppSafeZone).length > 0;
-  if (!hasObjects) { toast('Add something to your design first', 'w'); return; }
 
-  // Export at 2x for print quality
-  const dataURL = edCanvas.toDataURL({ format: 'png', multiplier: 2 });
+  // Save the current side before exporting
+  edSaveCurrentSideJSON();
 
-  const payload = {
-    type:        'PRINTPATH_DESIGN',
-    image:       dataURL,
-    description: edGetDesignDescription(),
-    size:        document.getElementById('size-select')?.value || '3"',
-    qty:         Number(document.getElementById('qty-select')?.value) || 50,
-    shop:        new URLSearchParams(window.location.search).get('shop') || '',
-  };
+  const hasFront = edFrontJSON &&
+    (edFrontJSON.objects || []).filter(o => !o._ppSafeZone).length > 0;
+  const hasBack  = edBackJSON  &&
+    (edBackJSON.objects  || []).filter(o => !o._ppSafeZone).length > 0;
 
-  if (window.opener && !window.opener.closed) {
-    window.opener.postMessage(payload, '*');
-    toast('Design sent to shop! ✓', 'g');
-    setTimeout(() => window.close(), 800);
-  } else {
-    toast('No opener window found', 'd');
+  if (!hasFront && !hasBack) {
+    toast('Add something to your design first', 'w'); return;
   }
+
+  const params  = new URLSearchParams(window.location.search);
+  const shop    = params.get('shop') || '';
+  const product = params.get('product') || 'sticker';
+  const size    = document.getElementById('size-select')?.value || '3"';
+  const qty     = Number(document.getElementById('qty-select')?.value) || 50;
+
+  // Helper: render a canvas from JSON and return dataURL
+  function renderSide(json) {
+    return new Promise(resolve => {
+      if (!json || !(json.objects || []).filter(o => !o._ppSafeZone).length) {
+        resolve(null); return;
+      }
+      const tmp = new fabric.Canvas(document.createElement('canvas'));
+      tmp.setWidth(edCanvas.width);
+      tmp.setHeight(edCanvas.height);
+      tmp.backgroundColor = '#1a1a2a';
+      tmp.loadFromJSON(json, () => {
+        tmp.renderAll();
+        resolve(tmp.toDataURL({ format: 'png', multiplier: 2 }));
+        tmp.dispose();
+      });
+    });
+  }
+
+  // Show loading state
+  const useBtn = document.getElementById('btn-use-design');
+  if (useBtn) { useBtn.disabled = true; useBtn.textContent = 'Exporting…'; }
+
+  Promise.all([
+    renderSide(edFrontJSON),
+    renderSide(edBackJSON),
+  ]).then(([frontImg, backImg]) => {
+    const payload = {
+      type:    'PRINTPATH_DESIGN',
+      image: {
+        front: frontImg,
+        back:  backImg,
+      },
+      meta: {
+        width:     edCanvas.width,
+        height:    edCanvas.height,
+        product,
+        size,
+        qty,
+        timestamp: Date.now(),
+        version:   'v2',
+        layers: {
+          front: edFrontJSON,
+          back:  edBackJSON,
+        },
+      },
+      description: edGetDesignDescription(),
+      shop,
+    };
+
+    // Persist so shop can reload on return visit
+    try { localStorage.setItem('pp_design', JSON.stringify(payload)); } catch(e) {}
+
+    const SHOP_ORIGIN = 'https://blendedprints.com';
+
+    if (window.opener && !window.opener.closed) {
+      // Try secure origin first, fall back to '*' for same-origin demo
+      try {
+        window.opener.postMessage(payload, SHOP_ORIGIN);
+      } catch(e) {
+        window.opener.postMessage(payload, '*');
+      }
+      toast('Design sent to shop! ✓', 'g');
+      setTimeout(() => window.close(), 800);
+    } else {
+      toast('No opener window found', 'd');
+      if (useBtn) { useBtn.disabled = false; useBtn.innerHTML = '✓ Use This Design'; }
+    }
+  });
 }
 
 /* Demo popup launcher — opens self in popup mode */
 function demoPopupLaunch() {
-  const url = window.location.origin + window.location.pathname + '?mode=popup&shop=demo';
-  window.open(url, 'PrintPathEditor', 'width=1100,height=760,resizable=yes');
+  const url = window.location.origin + window.location.pathname + '?mode=popup&shop=demo&product=shirt';
+  window.open(url, 'PrintPathEditor', 'width=1100,height=820,resizable=yes');
 }
 
-/* Receive design from popup (when this window is the shop) */
+/* ── RECEIVE DESIGN from popup (shop side) ── */
 window.addEventListener('message', e => {
   if (!e.data || e.data.type !== 'PRINTPATH_DESIGN') return;
-  const d = e.data;
 
-  // Show preview in embed card
-  const preview = document.getElementById('embed-preview');
-  const img     = document.getElementById('embed-preview-img');
-  if (preview && img) {
-    img.src = d.image;
-    preview.classList.add('show');
+  // Security: accept only known origins (plus same origin for demo)
+  const ALLOWED = ['https://blendedprints.com', window.location.origin];
+  if (!ALLOWED.includes(e.origin) && e.origin !== '') {
+    console.warn('[PrintPath] Blocked message from unknown origin:', e.origin);
+    return;
   }
 
-  // Store on window for checkout integration
+  const d = e.data;
+  const img = d.image;
+
+  // Support both v1 (image is string) and v2 (image is {front, back})
+  const frontSrc = typeof img === 'string' ? img : (img?.front || null);
+  const backSrc  = typeof img === 'object' ? (img?.back  || null) : null;
+
+  // Show preview in embed card
+  const preview    = document.getElementById('embed-preview');
+  const previewImg = document.getElementById('embed-preview-img');
+  if (preview && previewImg && frontSrc) {
+    previewImg.src = frontSrc;
+    preview.classList.add('show');
+    // Show back thumbnail if present
+    if (backSrc) {
+      let backThumb = document.getElementById('embed-preview-back');
+      if (!backThumb) {
+        backThumb = document.createElement('img');
+        backThumb.id = 'embed-preview-back';
+        backThumb.alt = 'Back design';
+        backThumb.style.cssText = 'max-width:100%;border-radius:6px;margin-top:6px;opacity:0.85';
+        preview.appendChild(backThumb);
+      }
+      backThumb.src = backSrc;
+    }
+    const previewLabel = document.querySelector('.embed-preview-label');
+    if (previewLabel) {
+      const sides = [frontSrc && 'front', backSrc && 'back'].filter(Boolean).join(' + ');
+      previewLabel.textContent = `✓ Design received (${sides})`;
+    }
+  }
+
+  // Persist design to localStorage for cart integration
+  try { localStorage.setItem('pp_design', JSON.stringify(d)); } catch(er) {}
+
+  // Store on window for immediate checkout use
   window.ppSelectedDesign = d;
 
-  toast(`Design received from customer ✓ — ${d.description || 'custom design'}`, 'g');
-
-  // Update dashboard feed
-  pushFeed({ dot: 'g', msg: `Partner design received — "${d.description || 'custom'}" · ${d.size} × ${d.qty}` });
+  toast(`Design received ✓ — ${d.description || 'custom design'} · ${d.meta?.size || ''} × ${d.meta?.qty || ''}`, 'g');
+  pushFeed({ dot: 'g', msg: `Partner design received — "${d.description || 'custom'}"` });
   renderDashboard();
 });
 
@@ -2560,6 +2898,23 @@ function copyEmbedCode(btn) {
     btn.textContent = 'Copied!';
     setTimeout(() => btn.textContent = 'Copy', 2000);
   }).catch(() => toast('Could not copy — try manually', 'w'));
+}
+
+/* ── CART INTEGRATION HELPER (exported for shop use) ── */
+function ppAddToCart(productId) {
+  const raw = localStorage.getItem('pp_design');
+  const design = raw ? JSON.parse(raw) : window.ppSelectedDesign;
+  if (!design) { console.warn('[PrintPath] No design found'); return null; }
+
+  const cartItem = {
+    productId,
+    designImage: typeof design.image === 'string' ? design.image : design.image?.front,
+    designImageBack: design.image?.back || null,
+    designMeta:  design.meta,
+    description: design.description,
+  };
+  console.log('[PrintPath] Adding to cart:', cartItem);
+  return cartItem;
 }
 
 /* ============================================================
