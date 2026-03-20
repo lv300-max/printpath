@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-<meta name="description" content="PrintPath — AI sticker design and print-on-demand shop dashboard. Generate, order, and track stickers in real time." />
+<meta name="description" content="PrintPath — Design studio for print-on-demand stickers. Design, order, and track stickers in real time." />
 <meta name="theme-color" content="#0b0f14" />
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; connect-src 'self' https:; frame-src https://accounts.google.com;" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; connect-src 'self' https:; frame-src https://accounts.google.com;" />
 <title>PrintPath — Live Demo</title>
 <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
 <link rel="apple-touch-icon" sizes="192x192" href="favicon-192.png" />
@@ -13,6 +13,7 @@
 <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
 <style>
 /* ============================================================
    RESET + BASE
@@ -935,6 +936,195 @@ body > * { position: relative; z-index: 1; }
 .empty .icon { font-size: 2rem; }
 
 /* ============================================================
+   DESIGN EDITOR
+============================================================ */
+.editor-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Toolbar row */
+.ed-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ed-btn {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.05);
+  color: var(--text2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s var(--ease);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  white-space: nowrap;
+}
+.ed-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+.ed-btn:hover { background: rgba(0,255,156,0.1); border-color: rgba(0,255,156,0.3); color: var(--green); }
+.ed-btn:active { transform: scale(0.95); }
+.ed-btn.primary {
+  background: linear-gradient(135deg, var(--green), var(--neon-blue));
+  color: #030d09; border: none;
+  box-shadow: 0 0 12px rgba(0,255,156,0.35);
+}
+.ed-btn.primary:hover { filter: brightness(1.08); box-shadow: 0 0 20px rgba(0,255,156,0.55); }
+.ed-btn.danger:hover  { border-color: rgba(248,113,113,0.4); color: var(--danger); background: rgba(248,113,113,0.08); }
+
+.ed-sep { width: 1px; height: 24px; background: rgba(255,255,255,0.08); flex-shrink: 0; margin: 0 2px; }
+
+/* Canvas wrap */
+.ed-canvas-wrap {
+  position: relative;
+  border-radius: var(--radius-s);
+  border: 1px solid rgba(0,255,156,0.15);
+  overflow: hidden;
+  background: #1a1a2a;
+  box-shadow: 0 0 30px rgba(0,0,0,0.5), inset 0 0 60px rgba(0,255,156,0.02);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Print safe-zone overlay */
+.ed-canvas-wrap::before {
+  content: '300 DPI · Print Ready';
+  position: absolute;
+  bottom: 7px; right: 10px;
+  font-size: 0.52rem; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--green); opacity: 0.35;
+  pointer-events: none; z-index: 10;
+}
+.ed-canvas-wrap canvas { display: block; }
+
+/* Properties panel */
+.ed-props {
+  background: var(--bg-glass);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: var(--radius-s);
+  padding: 10px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  min-height: 46px;
+  transition: opacity 0.2s;
+}
+.ed-props.inactive { opacity: 0.4; pointer-events: none; }
+.ed-props.inactive::before { content: 'Select an object to edit'; font-size: 0.68rem; color: var(--text3); }
+
+.prop-group { display: flex; flex-direction: column; gap: 3px; }
+.prop-label {
+  font-size: 0.54rem; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--text3);
+}
+.prop-color {
+  width: 28px; height: 28px; border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.15);
+  cursor: pointer; padding: 0; background: none;
+  overflow: hidden;
+}
+.prop-color input[type="color"] {
+  width: 36px; height: 36px;
+  margin: -4px;
+  border: none; cursor: pointer; padding: 0;
+  background: none;
+}
+
+.prop-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.12);
+  outline: none;
+  cursor: pointer;
+  width: 80px;
+}
+.prop-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px rgba(0,255,156,0.6);
+  cursor: pointer;
+}
+.prop-slider::-moz-range-thumb {
+  width: 14px; height: 14px;
+  border-radius: 50%; border: none;
+  background: var(--green);
+  box-shadow: 0 0 6px rgba(0,255,156,0.6);
+  cursor: pointer;
+}
+
+.prop-select {
+  height: 28px; padding: 0 8px;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px; color: var(--text);
+  font-family: inherit; font-size: 0.72rem; font-weight: 600;
+  outline: none; cursor: pointer; max-width: 120px;
+}
+.prop-num {
+  height: 28px; width: 54px;
+  padding: 0 8px;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px; color: var(--text);
+  font-family: inherit; font-size: 0.72rem; font-weight: 600;
+  outline: none; text-align: center;
+}
+.prop-num:focus, .prop-select:focus { border-color: rgba(0,255,156,0.35); }
+
+/* Layer list */
+.ed-layers {
+  background: var(--bg-glass);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: var(--radius-s);
+  overflow: hidden;
+}
+.ed-layers-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-size: 0.58rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3);
+}
+.layer-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-size: 0.72rem; color: var(--text2);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.layer-item:last-child { border-bottom: none; }
+.layer-item:hover { background: rgba(255,255,255,0.04); }
+.layer-item.active { background: rgba(0,255,156,0.08); color: var(--green); }
+.layer-icon { font-size: 0.8rem; flex-shrink: 0; }
+.layer-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layer-actions { display: flex; gap: 3px; opacity: 0; transition: opacity 0.15s; }
+.layer-item:hover .layer-actions { opacity: 1; }
+.layer-act {
+  width: 20px; height: 20px; border-radius: 4px;
+  background: rgba(255,255,255,0.06); border: none; color: var(--text2);
+  font-size: 0.65rem; cursor: pointer; display: grid; place-items: center;
+  transition: all 0.1s;
+}
+.layer-act:hover { background: rgba(0,255,156,0.15); color: var(--green); }
+
+/* Hidden file input */
+#ed-file-input { display: none; }
+
+/* ============================================================
    MOBILE TWEAKS
 ============================================================ */
 @media (max-width: 768px) {
@@ -954,6 +1144,10 @@ body > * { position: relative; z-index: 1; }
   .stat-box   { padding: 14px 12px; }
   .user-chip  { max-width: 160px; overflow: hidden; }
   .auth-name, #user-name { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ed-toolbar { gap: 5px; }
+  .ed-btn     { padding: 0 9px; font-size: 0.68rem; }
+  .prop-slider { width: 60px; }
+  .grid { grid-template-columns: 1fr; }
 }
 </style>
 </head>
@@ -1016,18 +1210,71 @@ body > * { position: relative; z-index: 1; }
 
   <!-- LEFT — CUSTOMER VIEW -->
   <div class="panel" id="panel-customer">
-    <div class="panel-title">Customer — Sticker AI</div>
+    <div class="panel-title">Design Studio</div>
 
     <div class="customer-hero">
       <h2 class="customer-heading">Design your <span>sticker</span></h2>
-      <div class="customer-sub">Describe it. We generate it. You print it.</div>
+      <div class="customer-sub">Build it. Drag it. Send it to print.</div>
 
-      <div class="input-wrap">
-        <textarea id="design-input" placeholder="e.g. neon dragon skull with lightning bolts, sticker style..." rows="3"></textarea>
+      <!-- ── DESIGN EDITOR ────────────────────────────────── -->
+      <div class="editor-shell">
+
+        <!-- Toolbar -->
+        <div class="ed-toolbar">
+          <button class="ed-btn primary" onclick="edAddText()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+            Text
+          </button>
+          <button class="ed-btn" onclick="edAddRect()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/></svg>
+            Rect
+          </button>
+          <button class="ed-btn" onclick="edAddCircle()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg>
+            Circle
+          </button>
+          <button class="ed-btn" onclick="document.getElementById('ed-file-input').click()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            Image
+          </button>
+          <input type="file" id="ed-file-input" accept="image/*" onchange="edUploadImage(event)" />
+          <div class="ed-sep"></div>
+          <button class="ed-btn" onclick="edBringForward()" title="Bring forward">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+            Forward
+          </button>
+          <button class="ed-btn" onclick="edSendBack()" title="Send back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            Back
+          </button>
+          <button class="ed-btn danger" onclick="edDeleteSelected()" title="Delete selected">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+            Delete
+          </button>
+        </div>
+
+        <!-- Canvas -->
+        <div class="ed-canvas-wrap" id="ed-canvas-wrap">
+          <canvas id="ed-canvas"></canvas>
+        </div>
+
+        <!-- Properties panel -->
+        <div class="ed-props inactive" id="ed-props">
+        </div>
+
+        <!-- Layers -->
+        <div class="ed-layers" id="ed-layers">
+          <div class="ed-layers-header">
+            <span>Layers</span>
+            <span id="ed-layer-count" style="color:var(--text3)">0 objects</span>
+          </div>
+          <div id="ed-layer-list"></div>
+        </div>
+
       </div>
 
       <!-- Size + Qty selectors -->
-      <div class="opt-row">
+      <div class="opt-row" style="margin-top:12px">
         <div class="opt-group">
           <div class="opt-label">Size</div>
           <select id="size-select" class="opt-select" onchange="updatePrice()">
@@ -1053,19 +1300,13 @@ body > * { position: relative; z-index: 1; }
       <div class="price-box" id="price-box">
         <div class="price-breakdown">
           <div class="price-breakdown-label">Order Total</div>
-          <div class="price-breakdown-detail" id="price-detail">50 × 3" + AI fee</div>
+          <div class="price-breakdown-detail" id="price-detail">50 × 3"</div>
           <span class="price-discount-badge" id="price-discount">BULK DISCOUNT</span>
         </div>
         <div class="price-total" id="price-total">$0.00</div>
       </div>
-        <button class="btn btn-gen" id="btn-gen" onclick="fakeGenerate()">
-          <div class="gen-brand-dot" aria-hidden="true"></div>
-          <div class="scan-line" aria-hidden="true"></div>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
-          </svg>
-          <span id="gen-label">Generate</span>
-        </button>
+
+      <div class="btn-row" style="margin-top:10px">
         <button class="btn btn-send" id="btn-send" onclick="sendOrder()" disabled>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -1073,27 +1314,27 @@ body > * { position: relative; z-index: 1; }
           Buy &amp; Send to Print
         </button>
       </div>
-
-      <div class="preview-card" id="preview-card">
-        <div class="preview-brand" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-          <span>PrintPath</span>
-        </div>
-        <div class="preview-label">Design Preview</div>
-        <div class="preview-text" id="preview-text">—</div>
-        <div class="preview-chips">
-          <span class="pchip" id="preview-size">3" × 3"</span>
-          <span class="pchip" id="preview-qty">Qty 50</span>
-          <span class="pchip" id="preview-finish">Matte</span>
-          <span class="pchip">Die-Cut</span>
-          <span class="pchip" style="color:var(--green)">300 DPI ✓</span>
-        </div>
-      </div>
-
-      <div class="send-result" id="send-result"></div>
     </div>
 
-    <div class="panel-title" style="margin-bottom:10px">Your Orders</div>
+    <div class="preview-card" id="preview-card">
+      <div class="preview-brand" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        <span>PrintPath</span>
+      </div>
+      <div class="preview-label">Design Preview</div>
+      <div class="preview-text" id="preview-text">—</div>
+      <div class="preview-chips">
+        <span class="pchip" id="preview-size">3" × 3"</span>
+        <span class="pchip" id="preview-qty">Qty 50</span>
+        <span class="pchip" id="preview-finish">Matte</span>
+        <span class="pchip">Die-Cut</span>
+        <span class="pchip" style="color:var(--green)">300 DPI ✓</span>
+      </div>
+    </div>
+
+    <div class="send-result" id="send-result"></div>
+
+    <div class="panel-title" style="margin-bottom:10px;margin-top:16px">Your Orders</div>
     <div class="sent-list" id="sent-list">
       <div class="empty"><div class="icon">🎨</div><span>Send an order to get started</span></div>
     </div>
@@ -1384,7 +1625,7 @@ function updatePrice() {
 
   box.classList.add('visible');
   total.textContent  = '$' + price.toFixed(2);
-  detail.textContent = `${qty} × ${size} + $5 AI fee`;
+  detail.textContent = `${qty} × ${size}`;
 
   if (discPct > 0) {
     badge.textContent = discPct + '% BULK DISCOUNT';
@@ -1401,62 +1642,330 @@ function updatePrice() {
 }
 
 /* ============================================================
-   CUSTOMER — GENERATE (fake)
+   DESIGN EDITOR — Fabric.js
 ============================================================ */
-const FINISHES = ['Matte', 'Gloss', 'Holographic', 'Vinyl'];
-const EMOJIS   = ['🌊','✦','🎨','⚡','🚀','🔥','🌈','💎','🦋','🐉','👾','🌙'];
+let edCanvas = null;
+let edReady  = false;
 
-let generated = null;
+function edInit() {
+  if (edReady) return;
+  const wrap  = document.getElementById('ed-canvas-wrap');
+  const size  = Math.min(wrap.clientWidth || 360, 400);
 
-function fakeGenerate() {
-  const input = document.getElementById('design-input').value.trim();
-  if (!input) {
-    toast('Enter a design idea first', 'w');
-    document.getElementById('design-input').focus();
-    return;
+  edCanvas = new fabric.Canvas('ed-canvas', {
+    width:           size,
+    height:          size,
+    backgroundColor: '#1a1a2a',
+    selection:       true,
+  });
+  edReady = true;
+
+  // Selection events → update props panel + layer list
+  edCanvas.on('selection:created',  edOnSelect);
+  edCanvas.on('selection:updated',  edOnSelect);
+  edCanvas.on('selection:cleared',  edOnDeselect);
+  edCanvas.on('object:added',       edRefreshLayers);
+  edCanvas.on('object:removed',     edRefreshLayers);
+  edCanvas.on('object:modified',    edRefreshLayers);
+
+  // Keyboard delete
+  document.addEventListener('keydown', e => {
+    if ((e.key === 'Delete' || e.key === 'Backspace') &&
+        document.activeElement.tagName !== 'INPUT' &&
+        document.activeElement.tagName !== 'TEXTAREA') {
+      edDeleteSelected();
+    }
+  });
+
+  // Enable send button as soon as anything is on canvas
+  edCanvas.on('object:added', edCheckSendReady);
+
+  // Draw safe-zone border
+  edDrawSafeZone();
+
+  updatePrice();
+}
+
+function edDrawSafeZone() {
+  const s   = edCanvas.width;
+  const pad = 10;
+  const rect = new fabric.Rect({
+    left:            pad,
+    top:             pad,
+    width:           s - pad * 2,
+    height:          s - pad * 2,
+    fill:            'transparent',
+    stroke:          'rgba(0,255,156,0.12)',
+    strokeWidth:     1,
+    strokeDashArray: [4, 4],
+    selectable:      false,
+    evented:         false,
+    excludeFromExport: true,
+    _ppSafeZone:     true,
+  });
+  edCanvas.add(rect);
+  edCanvas.sendToBack(rect);
+}
+
+/* ── TOOLS ── */
+function edAddText() {
+  if (!edReady) return;
+  const t = new fabric.IText('Edit me', {
+    left:      edCanvas.width  / 2 - 50,
+    top:       edCanvas.height / 2 - 16,
+    fill:      '#ffffff',
+    fontSize:  32,
+    fontFamily:'Arial',
+    fontWeight:'bold',
+  });
+  edCanvas.add(t);
+  edCanvas.setActiveObject(t);
+  t.enterEditing();
+  edCanvas.renderAll();
+  toast('Double-click to edit text', 'g');
+}
+
+function edAddRect() {
+  if (!edReady) return;
+  const r = new fabric.Rect({
+    left:        edCanvas.width  / 2 - 50,
+    top:         edCanvas.height / 2 - 50,
+    width:       100,
+    height:      100,
+    fill:        'rgba(0,255,156,0.2)',
+    stroke:      '#00ff9c',
+    strokeWidth: 2,
+    rx:          6,
+    ry:          6,
+  });
+  edCanvas.add(r);
+  edCanvas.setActiveObject(r);
+  edCanvas.renderAll();
+}
+
+function edAddCircle() {
+  if (!edReady) return;
+  const c = new fabric.Circle({
+    left:        edCanvas.width  / 2 - 50,
+    top:         edCanvas.height / 2 - 50,
+    radius:      50,
+    fill:        'rgba(0,224,255,0.2)',
+    stroke:      '#00e0ff',
+    strokeWidth: 2,
+  });
+  edCanvas.add(c);
+  edCanvas.setActiveObject(c);
+  edCanvas.renderAll();
+}
+
+function edUploadImage(e) {
+  if (!edReady || !e.target.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    fabric.Image.fromURL(ev.target.result, img => {
+      const maxW = edCanvas.width * 0.7;
+      if (img.width > maxW) img.scaleToWidth(maxW);
+      img.set({ left: edCanvas.width / 2 - (img.width * img.scaleX) / 2,
+                top:  edCanvas.height / 2 - (img.height * img.scaleY) / 2 });
+      edCanvas.add(img);
+      edCanvas.setActiveObject(img);
+      edCanvas.renderAll();
+      toast('Image added — drag to position', 'g');
+    });
+  };
+  reader.readAsDataURL(e.target.files[0]);
+  e.target.value = '';
+}
+
+function edDeleteSelected() {
+  if (!edReady) return;
+  const obj = edCanvas.getActiveObjects();
+  if (!obj.length) return;
+  obj.forEach(o => { if (!o._ppSafeZone) edCanvas.remove(o); });
+  edCanvas.discardActiveObject();
+  edCanvas.renderAll();
+  edCheckSendReady();
+}
+
+function edBringForward() {
+  const obj = edCanvas.getActiveObject();
+  if (obj && !obj._ppSafeZone) { edCanvas.bringForward(obj); edCanvas.renderAll(); }
+}
+
+function edSendBack() {
+  const obj = edCanvas.getActiveObject();
+  if (obj && !obj._ppSafeZone) { edCanvas.sendBackwards(obj); edCanvas.renderAll(); }
+}
+
+/* ── PROPERTIES PANEL ── */
+const FONTS = ['Arial','Georgia','Impact','Courier New','Verdana','Trebuchet MS','Comic Sans MS'];
+
+function edOnSelect() {
+  const obj = edCanvas.getActiveObject();
+  if (!obj || obj._ppSafeZone) { edOnDeselect(); return; }
+
+  const panel = document.getElementById('ed-props');
+  panel.classList.remove('inactive');
+
+  const isText = obj.type === 'i-text' || obj.type === 'text';
+  const fillVal = (typeof obj.fill === 'string' && obj.fill.startsWith('#'))
+    ? obj.fill : '#ffffff';
+  const strokeVal = (typeof obj.stroke === 'string' && obj.stroke.startsWith('#'))
+    ? obj.stroke : '#00ff9c';
+
+  panel.innerHTML = `
+    <div class="prop-group">
+      <div class="prop-label">Fill</div>
+      <div class="prop-color">
+        <input type="color" value="${fillVal}" oninput="edSetFill(this.value)" />
+      </div>
+    </div>
+    <div class="prop-group">
+      <div class="prop-label">Stroke</div>
+      <div class="prop-color">
+        <input type="color" value="${strokeVal}" oninput="edSetStroke(this.value)" />
+      </div>
+    </div>
+    <div class="prop-group">
+      <div class="prop-label">Stroke W</div>
+      <input class="prop-num" type="number" min="0" max="20" value="${obj.strokeWidth || 0}"
+             oninput="edSetStrokeW(this.value)" />
+    </div>
+    <div class="prop-group">
+      <div class="prop-label">Opacity</div>
+      <input class="prop-slider" type="range" min="0" max="100"
+             value="${Math.round((obj.opacity ?? 1) * 100)}"
+             oninput="edSetOpacity(this.value)" />
+    </div>
+    ${isText ? `
+    <div class="prop-group">
+      <div class="prop-label">Font</div>
+      <select class="prop-select" onchange="edSetFont(this.value)">
+        ${FONTS.map(f => `<option ${obj.fontFamily===f?'selected':''}>${f}</option>`).join('')}
+      </select>
+    </div>
+    <div class="prop-group">
+      <div class="prop-label">Size</div>
+      <input class="prop-num" type="number" min="8" max="200"
+             value="${Math.round(obj.fontSize || 32)}"
+             oninput="edSetFontSize(this.value)" />
+    </div>
+    <div class="prop-group">
+      <div class="prop-label">Spacing</div>
+      <input class="prop-slider" type="range" min="-50" max="200"
+             value="${obj.charSpacing || 0}"
+             oninput="edSetCharSpacing(this.value)" />
+    </div>` : ''}
+  `;
+  edRefreshLayers();
+}
+
+function edOnDeselect() {
+  const panel = document.getElementById('ed-props');
+  panel.classList.add('inactive');
+  panel.innerHTML = '';
+  edRefreshLayers();
+}
+
+/* ── PROPERTY SETTERS ── */
+function edSetFill(v)        { const o=edCanvas.getActiveObject(); if(o){o.set('fill',v);edCanvas.renderAll();} }
+function edSetStroke(v)      { const o=edCanvas.getActiveObject(); if(o){o.set('stroke',v);edCanvas.renderAll();} }
+function edSetStrokeW(v)     { const o=edCanvas.getActiveObject(); if(o){o.set('strokeWidth',+v);edCanvas.renderAll();} }
+function edSetOpacity(v)     { const o=edCanvas.getActiveObject(); if(o){o.set('opacity',+v/100);edCanvas.renderAll();} }
+function edSetFont(v)        { const o=edCanvas.getActiveObject(); if(o){o.set('fontFamily',v);edCanvas.renderAll();} }
+function edSetFontSize(v)    { const o=edCanvas.getActiveObject(); if(o){o.set('fontSize',+v);edCanvas.renderAll();} }
+function edSetCharSpacing(v) { const o=edCanvas.getActiveObject(); if(o){o.set('charSpacing',+v);edCanvas.renderAll();} }
+
+/* ── LAYERS ── */
+function edRefreshLayers() {
+  if (!edReady) return;
+  const objs = edCanvas.getObjects().filter(o => !o._ppSafeZone);
+  const active = edCanvas.getActiveObject();
+  const count  = document.getElementById('ed-layer-count');
+  const list   = document.getElementById('ed-layer-list');
+  if (count) count.textContent = objs.length + ' object' + (objs.length !== 1 ? 's' : '');
+  if (!list) return;
+
+  list.innerHTML = objs.slice().reverse().map((o, i) => {
+    const idx  = objs.length - 1 - i;
+    const icon = o.type === 'i-text' || o.type === 'text' ? '🔤'
+               : o.type === 'image'  ? '🖼'
+               : o.type === 'circle' ? '⬤'
+               : '▬';
+    const name = o.type === 'i-text' || o.type === 'text'
+      ? (o.text || '').slice(0, 18) || 'Text'
+      : o.type.charAt(0).toUpperCase() + o.type.slice(1);
+    const isActive = o === active;
+    return `<div class="layer-item${isActive?' active':''}" onclick="edSelectLayer(${idx})">
+      <span class="layer-icon">${icon}</span>
+      <span class="layer-name">${name}</span>
+      <div class="layer-actions">
+        <button class="layer-act" onclick="event.stopPropagation();edSelectLayer(${idx});edBringForward()" title="Up">↑</button>
+        <button class="layer-act" onclick="event.stopPropagation();edSelectLayer(${idx});edSendBack()" title="Down">↓</button>
+      </div>
+    </div>`;
+  }).join('') || '<div style="padding:10px 12px;font-size:0.7rem;color:var(--text3)">No objects yet</div>';
+}
+
+function edSelectLayer(idx) {
+  const objs = edCanvas.getObjects().filter(o => !o._ppSafeZone);
+  if (objs[idx]) {
+    edCanvas.setActiveObject(objs[idx]);
+    edCanvas.renderAll();
+    edOnSelect();
   }
+}
 
-  const btn = document.getElementById('btn-gen');
-  const label = document.getElementById('gen-label');
-  btn.classList.add('generating');
-  label.textContent = 'Generating…';
-  btn.disabled = true;
-
-  setTimeout(() => {
+/* ── SEND READY CHECK ── */
+function edCheckSendReady() {
+  if (!edReady) return;
+  const hasObjects = edCanvas.getObjects().filter(o => !o._ppSafeZone).length > 0;
+  const sendBtn    = document.getElementById('btn-send');
+  if (sendBtn) {
+    sendBtn.disabled = !hasObjects;
+    if (hasObjects) {
+      const { size, qty } = getSelectors();
+      const price = calculatePrice(size, qty);
+      sendBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Buy $${price.toFixed(2)} &amp; Send to Print`;
+    }
+  }
+  // Update preview card with canvas thumbnail
+  if (hasObjects) {
+    const previewCard = document.getElementById('preview-card');
+    const previewText = document.getElementById('preview-text');
+    const texts = edCanvas.getObjects()
+      .filter(o => (o.type==='i-text'||o.type==='text') && !o._ppSafeZone)
+      .map(o => o.text).join(', ');
+    previewText.textContent = texts || 'Custom design';
+    previewCard.classList.add('visible');
     const { size, qty } = getSelectors();
-    generated = {
-      text:   input,
-      finish: FINISHES[Math.floor(Math.random() * FINISHES.length)],
-      emoji:  EMOJIS[Math.floor(Math.random() * EMOJIS.length)],
-      size,
-      qty,
-    };
+    document.getElementById('preview-size').textContent = `${size} × ${size}`;
+    document.getElementById('preview-qty').textContent  = `Qty ${qty}`;
+  }
+}
 
-    document.getElementById('preview-text').textContent = generated.text;
-    document.getElementById('preview-finish').textContent = generated.finish;
-    document.getElementById('preview-size').textContent  = `${size} × ${size}`;
-    document.getElementById('preview-qty').textContent   = `Qty ${qty}`;
-    document.getElementById('preview-card').classList.add('visible');
-
-    updatePrice();
-    const price = calculatePrice(size, qty);
-    const sendBtn = document.getElementById('btn-send');
-    sendBtn.disabled = false;
-    sendBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Buy $${ price.toFixed(2) } &amp; Send to Print`;
-
-    btn.classList.remove('generating');
-    label.textContent = 'Re-generate';
-    btn.disabled = false;
-    toast(`Design ready — $${price.toFixed(2)} for ${qty} × ${size} stickers`, 'g');
-  }, 900 + Math.random() * 500);
+/* ── EXPORT DESIGN DESCRIPTION FOR ORDER ── */
+function edGetDesignDescription() {
+  if (!edReady) return 'Custom design';
+  const texts = edCanvas.getObjects()
+    .filter(o => (o.type==='i-text'||o.type==='text') && !o._ppSafeZone)
+    .map(o => o.text).join(', ');
+  const shapes = edCanvas.getObjects()
+    .filter(o => o.type !== 'i-text' && o.type !== 'text' && !o._ppSafeZone)
+    .length;
+  let desc = texts || 'Custom design';
+  if (shapes > 0) desc += ` (+${shapes} shape${shapes>1?'s':''})`;
+  return desc;
 }
 
 /* ============================================================
    CUSTOMER — SEND ORDER (Stripe Checkout → fallback demo)
 ============================================================ */
 async function sendOrder() {
-  const input = document.getElementById('design-input').value.trim();
-  if (!input) { toast('Enter a design first', 'w'); return; }
+  const input = edGetDesignDescription();
+  if (!edReady || edCanvas.getObjects().filter(o => !o._ppSafeZone).length === 0) {
+    toast('Add something to your design first', 'w'); return;
+  }
 
   const sendBtn = document.getElementById('btn-send');
   const resultEl = document.getElementById('send-result');
@@ -1504,9 +2013,15 @@ async function sendOrder() {
     resultEl.className = 'send-result show ok';
     resultEl.innerHTML = `✓ &nbsp;<span>Order <strong>${order.id}</strong> received — watch the dashboard</span><div class="send-result-brand" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg><span>PrintPath</span></div>`;
 
-    document.getElementById('design-input').value = '';
     document.getElementById('preview-card').classList.remove('visible');
-    generated = null;
+    if (edReady) {
+      edCanvas.getObjects().filter(o => !o._ppSafeZone).forEach(o => edCanvas.remove(o));
+      edCanvas.discardActiveObject();
+      edCanvas.renderAll();
+      edRefreshLayers();
+      edOnDeselect();
+    }
+    document.getElementById('btn-send').disabled = true;
 
     await pollOnce();
   } catch(e) {
@@ -1736,6 +2251,13 @@ async function resetDemo() {
   document.getElementById('preview-card').classList.remove('visible');
   document.getElementById('send-result').className = 'send-result';
   document.getElementById('btn-send').disabled = true;
+  if (edReady) {
+    edCanvas.getObjects().filter(o => !o._ppSafeZone).forEach(o => edCanvas.remove(o));
+    edCanvas.discardActiveObject();
+    edCanvas.renderAll();
+    edRefreshLayers();
+    edOnDeselect();
+  }
   renderDashboard();
   // Re-attach Firestore listener to reload live data
   if (window.currentUser) listenOrders();
@@ -1829,6 +2351,7 @@ auth.onAuthStateChanged(user => {
     initQR();
     renderDashboard();
     startPolling();   // starts Firestore listener
+    setTimeout(edInit, 100); // init editor after DOM settles
 
     toast('Welcome back, ' + (user.displayName?.split(' ')[0] || 'there') + '! 👋', 'g');
 
