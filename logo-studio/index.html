@@ -401,7 +401,7 @@ document.addEventListener('DOMContentLoaded', function() {
           <span>Include die-cut line</span>
         </label>
         <div class="pp-proof" style="display:none">Most users unlock Pro to finish their design</div>
-        <button class="pp-btn" id="export-btn" onclick="exportDesign()">✦ Use This Design</button>
+        <button class="pp-btn" id="export-btn" onclick="guardedExport(exportDesign)">✦ Use This Design</button>
         <div class="export-print-labels">
           <span class="print-label-tag">Print Ready</span>
           <span class="print-label-tag">300 DPI Locked</span>
@@ -413,10 +413,10 @@ document.addEventListener('DOMContentLoaded', function() {
           <button class="pp-fast-finish" id="fast-finish-btn" onclick="fastFinish()">✦ Finish with PrintPath</button>
           <span class="fast-finish-sub">Centers · Aligns · Print-ready</span>
         </div>
-        <button class="pp-btn pp-export-svg-btn" onclick="exportPrintSVG()">▤ Export Print File</button>
+        <button class="pp-btn pp-export-svg-btn" id="export-svg-btn" onclick="guardedExport(exportPrintSVG)">▤ Export Print File</button>
         <div class="export-split-row">
-          <button class="pp-btn-ghost pp-split-btn" onclick="exportSplitSVG()" title="Art + Cut as separate files">▣ Art + Cut</button>
-          <button class="pp-btn-ghost pp-split-btn" onclick="exportPDF()" title="High-res PDF">📄 PDF</button>
+          <button class="pp-btn-ghost pp-split-btn" id="export-split-btn" onclick="guardedExport(exportSplitSVG)" title="Art + Cut as separate files">▣ Art + Cut</button>
+          <button class="pp-btn-ghost pp-split-btn" id="export-pdf-btn" onclick="guardedExport(exportPDF)" title="High-res PDF">📄 PDF</button>
         </div>
         <select class="pp-input pp-preset-select" onchange="applyShopPreset(this.value)" title="Shop preset">
           <option value="default">Preset: Default</option>

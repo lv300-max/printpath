@@ -14,6 +14,14 @@ var STATE = {
   layersOpen: true,
 };
 
+/* ── SHOP LOCK RULES ── */
+/* Shops can override via setShopRules() from their embed config. */
+var SHOP_RULES = {
+  minDPI:      300,
+  minSize:     600,   // minimum artboard px (width or height)
+  allowLowDPI: false, // set true to let shop bypass DPI gate
+};
+
 var PRINT_SWATCHES = [
   '#000000','#ffffff','#1a1a2e','#0d1b2a',
   '#c0c0c0','#808080','#ff0000','#cc0000',
@@ -40,12 +48,12 @@ window.addEventListener('load', function() {
   canvas.on('selection:created', onSelect);
   canvas.on('selection:updated', onSelect);
   canvas.on('selection:cleared', onDeselect);
-  canvas.on('object:modified', function() { _clearSnapLines(); renderLayers(); updateTransformFields(); applyContourCut(); calcDPI(); calcTrueDPI(); });
+  canvas.on('object:modified', function() { _clearSnapLines(); renderLayers(); updateTransformFields(); applyContourCut(); calcDPI(); calcTrueDPI(); updateLockState(); });
   canvas.on('object:moving', onObjectMoving);
-  canvas.on('mouse:up', function() { _clearSnapLines(); calcDPI(); calcTrueDPI(); });
-  canvas.on('object:scaling', function() { calcDPI(); calcTrueDPI(); });
-  canvas.on('object:added', function() { renderLayers(); applyContourCut(); calcDPI(); calcTrueDPI(); });
-  canvas.on('object:removed', function() { renderLayers(); applyContourCut(); calcDPI(); calcTrueDPI(); });
+  canvas.on('mouse:up', function() { _clearSnapLines(); calcDPI(); calcTrueDPI(); updateLockState(); });
+  canvas.on('object:scaling', function() { calcDPI(); calcTrueDPI(); updateLockState(); });
+  canvas.on('object:added', function() { renderLayers(); applyContourCut(); calcDPI(); calcTrueDPI(); updateLockState(); });
+  canvas.on('object:removed', function() { renderLayers(); applyContourCut(); calcDPI(); calcTrueDPI(); updateLockState(); });
 
   document.addEventListener('keydown', handleKey);
   document.getElementById('img-upload').addEventListener('change', handleImageUpload);
@@ -885,6 +893,83 @@ function calcDPI() {
     if (exportBtn)     exportBtn.disabled = true;
     if (exportBlocked) exportBlocked.style.display = 'block';
   }
+}
+
+/* ── SHOP LOCK — VALIDATION + GUARD ── */
+function validateForExport() {
+  var objs = canvas ? canvas.getObjects().filter(function(o) {
+    return o.visible && !o._isSnapLine && !o._isSafeArea && !o._isCutLine;
+  }) : [];
+
+  if (!objs.length) return { ok: false, reason: 'No artwork on canvas' };
+
+  // Artboard size guard
+  if (STATE.artboardW < SHOP_RULES.minSize || STATE.artboardH < SHOP_RULES.minSize) {
+    return { ok: false, reason: 'Canvas too small (' + STATE.artboardW + '×' + STATE.artboardH + 'px)' };
+  }
+
+  // True DPI guard — checks source resolution of every image object
+  if (!SHOP_RULES.allowLowDPI) {
+    var images = objs.filter(function(o) { return o.type === 'image' && o._originalWidth; });
+    if (images.length > 0) {
+      var iw = parseFloat(document.getElementById('inches-w').value) || 3;
+      var worstDPI = Infinity;
+      images.forEach(function(img) {
+        var dpi = (img._originalWidth * img.scaleX) / iw;
+        if (dpi < worstDPI) worstDPI = dpi;
+      });
+      if (worstDPI < SHOP_RULES.minDPI) {
+        return { ok: false, reason: 'DPI too low (' + Math.round(worstDPI) + ' — need ' + SHOP_RULES.minDPI + ')' };
+      }
+    } else if (STATE.dpi < SHOP_RULES.minDPI) {
+      // No images — fall back to display-bounds DPI
+      return { ok: false, reason: 'DPI too low (' + STATE.dpi + ' — need ' + SHOP_RULES.minDPI + ')' };
+    }
+  }
+
+  return { ok: true };
+}
+
+function guardedExport(fn) {
+  var check = validateForExport();
+  if (!check.ok) {
+    toast('❌ ' + check.reason);
+    // Flash the export-blocked message
+    var blocked = document.getElementById('export-blocked');
+    if (blocked) {
+      blocked.textContent = '❌ ' + check.reason;
+      blocked.style.display = 'block';
+    }
+    return;
+  }
+  if (typeof fn === 'function') fn();
+}
+
+function updateLockState() {
+  var check = validateForExport();
+  var ids = ['export-btn', 'export-svg-btn', 'export-split-btn', 'export-pdf-btn'];
+  ids.forEach(function(id) {
+    var btn = document.getElementById(id);
+    if (!btn) return;
+    btn.disabled = !check.ok;
+    btn.style.opacity = check.ok ? '' : '0.45';
+    btn.title = check.ok ? '' : check.reason;
+  });
+  var blocked = document.getElementById('export-blocked');
+  if (blocked && !check.ok) {
+    blocked.textContent = '❌ ' + check.reason;
+    blocked.style.display = 'block';
+  } else if (blocked && check.ok) {
+    blocked.style.display = 'none';
+  }
+}
+
+/* Override shop quality rules from embed config */
+function setShopRules(config) {
+  SHOP_RULES = Object.assign({}, SHOP_RULES, config);
+  updateLockState();
+  calcDPI();
+  calcTrueDPI();
 }
 
 /* ── EXPORT ── */
