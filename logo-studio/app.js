@@ -786,43 +786,45 @@ function applyDieCut() {
   sa.style.borderRadius = STATE.dieCutShape === 'circle' ? '50%' : STATE.dieCutShape === 'rounded' ? '12%' : '0';
 }
 
-/* ── AUTO UPSCALE GUARD ── */
-/* Runs after upload. If the placed object's pixel footprint would print
-   below 300 DPI at the current target size, scale it up (max 2.5×).
-   Does NOT run during snap — snap is positional only. */
-function autoUpscale(obj) {
-  if (!obj || !canvas) return;
-  var iw = parseFloat(document.getElementById('inches-w').value) || 3;
-  var TARGET_DPI = 300;
-  var MAX_SCALE  = 2.5;
+/* ── SNAP TO DPI ── */
+/* Formula: targetPx = SHOP_DPI × inches
+   min(scaleW, scaleH) prevents overflow.
+   _dpiLocked: once sized this session, won't double-scale on re-run.
+   _qualityFail: set when source needs >MAX_SCALE — hard-blocks export. */
+function snapToDPI(img) {
+  if (!img || !canvas) return;
+  if (img._dpiLocked) return;        // already sized — don't double-scale
 
-  var b = obj.getBoundingRect(true);
-  var pxW = b.width;
-  if (pxW <= 0) return;
+  var iw        = parseFloat(document.getElementById('inches-w').value) || 4;
+  var MAX_SCALE = 3;
+  var targetPx  = SHOP_DPI * iw;
 
-  var currentDPI = pxW / iw;
-  if (currentDPI >= TARGET_DPI) return; // already good
+  var currentW  = (img._originalWidth  || img.width  || 1) * (img.scaleX || 1);
+  var currentH  = (img._originalHeight || img.height || 1) * (img.scaleY || 1);
+  if (currentW <= 0 || currentH <= 0) return;
 
-  var factor = Math.min(TARGET_DPI / currentDPI, MAX_SCALE);
-  obj.scaleX = (obj.scaleX || 1) * factor;
-  obj.scaleY = (obj.scaleY || 1) * factor;
+  var scaleFactor = Math.min(targetPx / currentW, targetPx / currentH);
 
-  // Re-centre after scale
-  obj.set({ left: STATE.artboardW / 2, top: STATE.artboardH / 2,
-            originX: 'center', originY: 'center' });
-  obj.setCoords();
-  canvas.renderAll();
-  calcDPI();
-  calcTrueDPI();
-
-  var finalDPI = Math.round(pxW * factor / iw);
-  if (finalDPI < 150) {
-    toast('⚠ Image too small — quality may be low');
-  } else if (finalDPI < 300) {
-    toast('⚠ Auto-scaled — still below 300 DPI');
-  } else {
-    toast('✦ Auto-enhanced to print quality');
+  img._qualityFail = false;
+  if (scaleFactor > MAX_SCALE) {
+    scaleFactor      = MAX_SCALE;
+    img._qualityFail = true;
   }
+
+  img.scaleX     = (img.scaleX || 1) * scaleFactor;
+  img.scaleY     = (img.scaleY || 1) * scaleFactor;
+  img._dpiLocked = true;
+  img.setCoords();
+}
+
+/* Legacy alias — kept so any upload-path calls still work */
+function autoUpscale(obj) { snapToDPI(obj); }
+
+/* Shop API — call from embed config */
+function setShopDPI(dpi) {
+  SHOP_DPI = dpi;
+  SHOP_RULES.minDPI = dpi;
+  toast('✦ Shop DPI: ' + dpi);
 }
 
 /* ── TRUE DPI (SOURCE RESOLUTION CHECK) ── */
@@ -1182,38 +1184,52 @@ function toggleSidebars() {
 }
 
 /* ── RUN FAST PATH ── */
-/* Correct order: size → layout → cut → validate
-   1. snapToDPI   — scale every image to SHOP_DPI × inches
-   2. fastFinish  — center collective bounds, fit to safe area
-   3. applyContourCut — trace hull around final positioned art
-   4. calcDPI / calcTrueDPI / updateLockState — validate & gate export */
+/* Order: size → layout → cut → validate
+   Only processes the FIRST image — multi-image layout is undefined behaviour. */
 function runFastPath() {
   if (!canvas) return;
   var btn = document.getElementById('pp-snap');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Processing...'; }
+
   setTimeout(function() {
     try {
-      // 1. Ensure sticker mode so contour cut fires
+      // Ensure sticker mode so contour cut fires
       if (STATE.mode !== 'sticker') setMode('sticker');
 
-      // 2. SIZE: snap every image to shop DPI target
+      // Find images
       var images = canvas.getObjects().filter(function(o) {
         return o.visible && !o._isSnapLine && !o._isSafeArea && !o._isCutLine && o.type === 'image';
       });
-      if (images.length > 1) toast('⚠ Multiple images — sizing each to ' + SHOP_DPI + ' DPI');
-      images.forEach(function(o) { snapToDPI(o); });
 
-      // 3. LAYOUT: center + fit to safe area (after size is locked)
+      if (!images.length) {
+        toast('No image ❌');
+        if (btn) { btn.disabled = false; btn.textContent = '⚡ PrintPath'; }
+        return;
+      }
+
+      if (images.length > 1) toast('⚠ Multiple images — using first');
+
+      // 1. SIZE — snap first image to shop DPI target
+      snapToDPI(images[0]);
+
+      // 2. LAYOUT — center + fit to safe area
       fastFinish();
 
-      // 4. CUT + VALIDATE: after fastFinish settles
+      // 3. CUT + VALIDATE (after fastFinish settles)
       setTimeout(function() {
         applyContourCut();
         calcDPI();
         calcTrueDPI();
         updateLockState();
+
+        var check = validateForExport();
+        if (!check.ok) {
+          toast(check.reason + ' ❌');
+        } else {
+          toast('✔ ' + SHOP_DPI + ' DPI Ready');
+        }
+
         if (btn) { btn.disabled = false; btn.textContent = '⚡ PrintPath'; }
-        toast('⚡ Print-ready in one click');
       }, 120);
     } catch(err) {
       console.warn('[runFastPath]', err);
