@@ -6,6 +6,10 @@
 <script>window._ppBootStart = Date.now();</script>
 <title>PrintPath Design Studio — Built for Print Shops</title>
 <meta name="description" content="Design tool built for print shops. 300 DPI Locked. Shirt Safe Area. Print Ready guaranteed."/>
+<meta name="theme-color" content="#000000"/>
+<link rel="icon" type="image/png" href="/printpath_logo.png"/>
+<link rel="apple-touch-icon" href="/printpath_logo.png"/>
+<link rel="manifest" href="/manifest.json"/>
 <!-- Non-blocking CSS: preload then swap rel -->
 <link rel="preload" href="styles.css" as="style" onload="this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="styles.css"></noscript>
@@ -24,6 +28,14 @@
   pointer-events: none;
 }
 body { background: #000; }
+.pp-boot-logo-img {
+  width: 80px;
+  height: auto;
+  object-fit: contain;
+  animation: bootFade 1.4s ease forwards;
+  filter: drop-shadow(0 0 18px rgba(0,234,255,0.5));
+}
+/* legacy text fallback — no longer used */
 .pp-boot-logo {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 4vw;
@@ -100,13 +112,13 @@ document.addEventListener('DOMContentLoaded', function() {
 <body>
 
 <div id="pp-boot" aria-hidden="true">
-  <div class="pp-boot-logo">PRINTPATH</div>
+  <img src="/printpath_logo.png" class="pp-boot-logo-img" alt="PrintPath"/>
   <div class="pp-boot-pixels"></div>
 </div>
 
 <header class="pp-header">
   <div class="pp-brand">
-    <div class="pp-logo-mark">⬡</div>
+    <img src="/printpath_logo.png" class="pp-brand-img" alt="PrintPath"/>
     <div class="pp-brand-text">
       <span class="pp-name">PRINTPATH</span>
       <span class="pp-tag">Logo Studio</span>

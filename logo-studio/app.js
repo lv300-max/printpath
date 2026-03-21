@@ -1100,14 +1100,35 @@ function exportDesign() {
     canvas.renderAll();
   }
 
-  var dataURL = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 1 });
+  // Add subtle PrintPath watermark logo to export (bottom-right, small)
+  var logoMark = null;
+  fabric.Image.fromURL('/printpath_logo.png', function(img) {
+    var targetSize = Math.round(STATE.artboardW * 0.055); // ~5.5% of canvas width
+    var scale = targetSize / img.width;
+    img.set({
+      left:  STATE.artboardW - targetSize - 10,
+      top:   STATE.artboardH - targetSize - 10,
+      scaleX: scale,
+      scaleY: scale,
+      opacity: 0.18,
+      selectable: false,
+      evented:    false,
+      excludeFromExport: false
+    });
+    logoMark = img;
+    canvas.add(logoMark);
+    canvas.renderAll();
 
-  if (dcOverlay) canvas.remove(dcOverlay);
-  canvas.backgroundColor = origBg;
-  canvas.renderAll();
+    var dataURL = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 1 });
 
-  downloadDataURL(dataURL, name + '.png');
-  toast('✦ ' + STATE.artboardW + '×' + STATE.artboardH + 'px — ' + STATE.dpi + ' DPI');
+    if (logoMark) canvas.remove(logoMark);
+    if (dcOverlay) canvas.remove(dcOverlay);
+    canvas.backgroundColor = origBg;
+    canvas.renderAll();
+
+    downloadDataURL(dataURL, name + '.png');
+    toast('✦ ' + STATE.artboardW + '\xd7' + STATE.artboardH + 'px \u2014 ' + STATE.dpi + ' DPI');
+  }, { crossOrigin: 'anonymous' });
 }
 
 /* ── FINISH WITH PRINTPATH ── */
