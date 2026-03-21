@@ -242,6 +242,7 @@ function handleImageUpload(e) {
         canvas.add(group);
         canvas.setActiveObject(group);
         canvas.renderAll();
+        autoUpscale(group);
         toast('SVG placed');
       });
     };
@@ -255,6 +256,7 @@ function handleImageUpload(e) {
         canvas.add(img);
         canvas.setActiveObject(img);
         canvas.renderAll();
+        autoUpscale(img);
         toast('Image placed');
       }, { crossOrigin: 'anonymous' });
     };
@@ -720,6 +722,44 @@ function applyDieCut() {
   sa.style.top = m + 'px'; sa.style.left = m + 'px';
   sa.style.right = m + 'px'; sa.style.bottom = m + 'px';
   sa.style.borderRadius = STATE.dieCutShape === 'circle' ? '50%' : STATE.dieCutShape === 'rounded' ? '12%' : '0';
+}
+
+/* ── AUTO UPSCALE GUARD ── */
+/* Runs after upload. If the placed object's pixel footprint would print
+   below 300 DPI at the current target size, scale it up (max 2.5×).
+   Does NOT run during snap — snap is positional only. */
+function autoUpscale(obj) {
+  if (!obj || !canvas) return;
+  var iw = parseFloat(document.getElementById('inches-w').value) || 3;
+  var TARGET_DPI = 300;
+  var MAX_SCALE  = 2.5;
+
+  var b = obj.getBoundingRect(true);
+  var pxW = b.width;
+  if (pxW <= 0) return;
+
+  var currentDPI = pxW / iw;
+  if (currentDPI >= TARGET_DPI) return; // already good
+
+  var factor = Math.min(TARGET_DPI / currentDPI, MAX_SCALE);
+  obj.scaleX = (obj.scaleX || 1) * factor;
+  obj.scaleY = (obj.scaleY || 1) * factor;
+
+  // Re-centre after scale
+  obj.set({ left: STATE.artboardW / 2, top: STATE.artboardH / 2,
+            originX: 'center', originY: 'center' });
+  obj.setCoords();
+  canvas.renderAll();
+  calcDPI();
+
+  var finalDPI = Math.round(pxW * factor / iw);
+  if (finalDPI < 150) {
+    toast('⚠ Image too small — quality may be low');
+  } else if (finalDPI < 300) {
+    toast('⚠ Auto-scaled — still below 300 DPI');
+  } else {
+    toast('✦ Auto-enhanced to print quality');
+  }
 }
 
 /* ── DPI ENGINE ── */
