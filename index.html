@@ -181,7 +181,7 @@
       </h1>
       <p class="hero-sub">Your customers design themselves — so orders come in print-ready. No fixing. No emails. Just more sales.</p>
       <div class="hero-cta-row">
-        <button class="btn btn-neon btn-lg hero-cta-primary" onclick="openAiGen()" aria-label="Start designing with AI">
+        <button class="btn btn-neon btn-lg hero-cta-primary" onclick="window.location.href='/logo-studio'" aria-label="Try the design studio">
           See It Live
         </button>
         <button class="btn btn-ghost-neon btn-lg" onclick="document.getElementById('pricing').scrollIntoView({behavior:'smooth'})" aria-label="View pricing">
@@ -379,45 +379,33 @@
       <p class="section-eyebrow">Pick your use case</p>
       <h2 class="section-heading">What are you making today?</h2>
       <div class="category-grid">
-        <button class="category-btn" onclick="openAiGenWithPrompt('professional work shirt design')" aria-label="Work designs">Work</button>
-        <button class="category-btn" onclick="openAiGenWithPrompt('school spirit shirt design')" aria-label="School designs">School</button>
-        <button class="category-btn" onclick="openAiGenWithPrompt('event group shirt design')" aria-label="Event designs">Events</button>
-        <button class="category-btn" onclick="openAiGenWithPrompt('sports team shirt bold graphic')" aria-label="Sports designs">Sports</button>
-        <button class="category-btn" onclick="openAiGenWithPrompt('cause awareness shirt design')" aria-label="Causes designs">Causes</button>
-        <button class="category-btn" onclick="openAiGenWithPrompt('business logo shirt design')" aria-label="Business designs">Business</button>
+        <button class="category-btn" onclick="window.location.href='/logo-studio'" aria-label="Work designs">Work</button>
+        <button class="category-btn" onclick="window.location.href='/logo-studio'" aria-label="School designs">School</button>
+        <button class="category-btn" onclick="window.location.href='/logo-studio'" aria-label="Event designs">Events</button>
+        <button class="category-btn" onclick="window.location.href='/logo-studio'" aria-label="Sports designs">Sports</button>
+        <button class="category-btn" onclick="window.location.href='/logo-studio'" aria-label="Causes designs">Causes</button>
+        <button class="category-btn" onclick="window.location.href='/logo-studio'" aria-label="Business designs">Business</button>
       </div>
     </div>
   </section>
 
-  <!-- ===================== DESIGN LAB ENTRY ===================== -->
-  <section class="lab-entry-section" aria-label="AI Design Lab entry">
+  <!-- ===================== STUDIO ENTRY ===================== -->
+  <section class="lab-entry-section" aria-label="Try the design studio">
     <div class="container">
       <div class="lab-entry-inner">
         <div class="lab-entry-text">
           <p class="section-eyebrow">See it live</p>
           <h2 class="lab-entry-heading">Try the design tool<br><span class="gradient-text">your customers will use.</span></h2>
-          <p class="lab-entry-sub">This is what gets embedded on your shop. Customers design themselves, the file comes out print-ready — 300 DPI locked, safe area enforced.</p>
+          <p class="lab-entry-sub">This is what gets embedded on your shop. Customers upload their logo, press one button, and the file comes out print-ready — 300 DPI locked, safe area enforced.</p>
         </div>
         <div class="lab-entry-form">
-          <div class="lab-entry-input-row">
-            <input
-              id="lab-entry-input"
-              type="text"
-              class="lab-entry-input"
-              placeholder="Describe your idea (or prompt)…"
-              maxlength="300"
-              aria-label="Describe your design"
-              autocomplete="off"
-              spellcheck="true"
-              onkeydown="if(event.key==='Enter'){ openAiGenWithPrompt(this.value); }"
-            />
-            <button class="btn btn-neon" onclick="openAiGenWithPrompt(document.getElementById('lab-entry-input').value)" aria-label="Create design">
-              Start Creating
-            </button>
-          </div>
+          <button class="btn btn-neon btn-lg" onclick="window.location.href='/logo-studio'" aria-label="Open the design studio">
+            Open Studio →
+          </button>
         </div>
       </div>
     </div>
+  </section>
   </section>
 
   <!-- ===================== SOCIAL PROOF ===================== -->
@@ -1500,16 +1488,16 @@
           Print<span class="logo-accent">Path</span>
         </div>
         <p class="footer-tagline">Design it. We make it print-perfect.</p>
-        <p>AI-powered. 300 DPI locked. Professional results — every time.</p>
+        <p>300 DPI locked. Print-ready output — every time.</p>
       </div>
 
       <div class="footer-col">
         <h4>Designs</h4>
         <ul>
-          <li><a href="#" onclick="openAiGen(); return false;">Create a Design</a></li>
-          <li><a href="#" onclick="openAiGenWithPrompt('team shirts'); return false;">Team Shirts</a></li>
-          <li><a href="#" onclick="openAiGenWithPrompt('event shirts'); return false;">Event Shirts</a></li>
-          <li><a href="#" onclick="openAiGenWithPrompt('business logo shirt'); return false;">Business Shirts</a></li>
+          <li><a href="/logo-studio">Open Studio</a></li>
+          <li><a href="/logo-studio">Team Shirts</a></li>
+          <li><a href="/logo-studio">Event Shirts</a></li>
+          <li><a href="/logo-studio">Business Shirts</a></li>
         </ul>
       </div>
 
