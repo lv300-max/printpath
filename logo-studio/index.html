@@ -128,7 +128,7 @@ document.addEventListener('DOMContentLoaded', function() {
   </div>
 </header>
 
-<main class="studio-layout pp-focus-mode">
+<main class="studio-layout">
 
   <!-- LEFT SIDEBAR -->
   <aside class="sidebar sidebar-left">
@@ -234,6 +234,13 @@ document.addEventListener('DOMContentLoaded', function() {
       </div>
     </div>
 
+    <!-- Always-visible upload drop zone in canvas area -->
+    <div class="pp-canvas-upload" id="pp-canvas-upload" onclick="triggerImageUpload()">
+      <span class="pcu-icon">⬆</span>
+      <span class="pcu-label">Drop image here or click to upload</span>
+      <span class="pcu-sub">PNG · JPG · SVG · Drag &amp; drop</span>
+    </div>
+
     <div class="canvas-outer" id="canvas-outer">
       <div class="canvas-wrapper" id="canvas-wrapper">
         <canvas id="logo-canvas"></canvas>
@@ -245,7 +252,7 @@ document.addEventListener('DOMContentLoaded', function() {
       </div>
     </div>
 
-    <div class="canvas-statusbar">
+    <div class="canvas-statusbar" style="margin-bottom:70px">
       <span id="obj-coords">X: —  Y: —</span>
       <span id="obj-dims">W: —  H: —</span>
       <span id="obj-rot">R: 0°</span>
