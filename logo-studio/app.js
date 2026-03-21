@@ -49,6 +49,28 @@ window.addEventListener('load', function() {
   document.getElementById('img-upload').addEventListener('change', handleImageUpload);
   window.addEventListener('resize', fitCanvasToWindow);
 
+  // Drag-and-drop onto upload zone and canvas wrapper
+  var dropTargets = [
+    document.getElementById('upload-zone'),
+    document.querySelector('.canvas-wrapper'),
+  ];
+  dropTargets.forEach(function(el) {
+    if (!el) return;
+    el.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      el.classList.add('pp-drop-active');
+    });
+    el.addEventListener('dragleave', function() {
+      el.classList.remove('pp-drop-active');
+    });
+    el.addEventListener('drop', function(e) {
+      e.preventDefault();
+      el.classList.remove('pp-drop-active');
+      var file = e.dataTransfer.files[0];
+      if (file) handleImageUpload({ target: { files: [file], value: '' } });
+    });
+  });
+
   // Start in sticker mode — black canvas, contour cut ready
   setMode('sticker');
   canvas.setOverlayColor('rgba(255,255,255,0.03)', canvas.renderAll.bind(canvas));
@@ -203,7 +225,12 @@ function triggerImageUpload() {
 function handleImageUpload(e) {
   var file = e.target.files[0];
   if (!file) return;
-  if (file.name.toLowerCase().endsWith('.svg')) {
+  var allowed = ['image/png','image/jpeg','image/svg+xml','image/webp','image/gif'];
+  if (!allowed.includes(file.type) && !file.name.toLowerCase().match(/\.(png|jpg|jpeg|svg|webp|gif)$/)) {
+    toast('⚠ Please upload a PNG, JPG, SVG or WebP file');
+    return;
+  }
+  if (file.name.toLowerCase().endsWith('.svg') || file.type === 'image/svg+xml') {
     var reader = new FileReader();
     reader.onload = function(ev) {
       fabric.loadSVGFromString(ev.target.result, function(objs, opts) {
@@ -227,11 +254,11 @@ function handleImageUpload(e) {
         canvas.setActiveObject(img);
         canvas.renderAll();
         toast('Image placed');
-      });
+      }, { crossOrigin: 'anonymous' });
     };
     reader2.readAsDataURL(file);
   }
-  e.target.value = '';
+  if (e.target && e.target.value !== undefined) { try { e.target.value = ''; } catch(ex) {} }
 }
 
 /* ── SELECTION ── */

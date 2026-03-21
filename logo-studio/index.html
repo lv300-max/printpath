@@ -84,6 +84,15 @@ document.addEventListener('DOMContentLoaded', function() {
   <aside class="sidebar sidebar-left">
 
     <div class="sidebar-section">
+      <label class="pp-upload-zone" for="img-upload" id="upload-zone">
+        <span class="upload-zone-icon">⬆</span>
+        <span class="upload-zone-label">Upload Image</span>
+        <span class="upload-zone-sub">PNG · JPG · SVG · Drag &amp; drop</span>
+      </label>
+      <input type="file" id="img-upload" accept="image/png,image/svg+xml,image/jpeg,image/webp,image/gif" style="display:none"/>
+    </div>
+
+    <div class="sidebar-section">
       <div class="sidebar-label">ARTBOARD — SHIRT SAFE AREA</div>
       <div class="artboard-presets">
         <button class="preset-btn active" onclick="setArtboard(1000,1000)" data-size="1000">1000²</button>
@@ -121,7 +130,6 @@ document.addEventListener('DOMContentLoaded', function() {
           <span class="tool-icon">⊕</span><span class="tool-label">Image</span>
         </button>
       </div>
-      <input type="file" id="img-upload" accept="image/png,image/svg+xml,image/jpeg" style="display:none"/>
     </div>
 
     <div class="sidebar-section">
