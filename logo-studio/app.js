@@ -40,8 +40,9 @@ window.addEventListener('load', function() {
   canvas.on('selection:created', onSelect);
   canvas.on('selection:updated', onSelect);
   canvas.on('selection:cleared', onDeselect);
-  canvas.on('object:modified', function() { renderLayers(); updateTransformFields(); applyContourCut(); });
+  canvas.on('object:modified', function() { _clearSnapLines(); renderLayers(); updateTransformFields(); applyContourCut(); });
   canvas.on('object:moving', onObjectMoving);
+  canvas.on('mouse:up', function() { _clearSnapLines(); });
   canvas.on('object:added', function() { renderLayers(); applyContourCut(); });
   canvas.on('object:removed', function() { renderLayers(); applyContourCut(); });
 
@@ -485,19 +486,111 @@ function alignObj(dir) {
   updateTransformFields();
 }
 
-/* ── SNAP ── */
+/* ── SNAP ENGINE ── */
+// Snap threshold in canvas units
+var SNAP_THRESHOLD = 8;
+
+// Active guide lines drawn on canvas overlay
+var _snapLines = [];
+
+function _clearSnapLines() {
+  _snapLines.forEach(function(l) { canvas.remove(l); });
+  _snapLines = [];
+}
+
+function _drawSnapLine(x1, y1, x2, y2, color) {
+  var line = new fabric.Line([x1, y1, x2, y2], {
+    stroke: color || '#00eaff',
+    strokeWidth: 0.5,
+    strokeDashArray: [4, 3],
+    selectable: false,
+    evented: false,
+    excludeFromExport: true,
+    opacity: 0.7,
+    _isSnapLine: true,
+  });
+  canvas.add(line);
+  canvas.bringToFront(line);
+  _snapLines.push(line);
+}
+
+function snapEngine(obj) {
+  var W = STATE.artboardW, H = STATE.artboardH;
+  var b = obj.getBoundingRect(true);
+  var T = SNAP_THRESHOLD;
+
+  // Edges and center of the moving object
+  var oL = b.left,             oR = b.left + b.width;
+  var oT = b.top,              oB = b.top  + b.height;
+  var oCx = b.left + b.width  / 2;
+  var oCy = b.top  + b.height / 2;
+
+  var snapX = null, snapY = null;
+  var lineColor = '#00eaff';
+
+  // ── Artboard anchors (left, center, right / top, center, bottom) ──
+  var artX = [0, W / 2, W];
+  var artY = [0, H / 2, H];
+
+  artX.forEach(function(ax) {
+    if (snapX === null && Math.abs(oL  - ax) < T) snapX = ax - 0;
+    if (snapX === null && Math.abs(oCx - ax) < T) snapX = ax - b.width / 2;
+    if (snapX === null && Math.abs(oR  - ax) < T) snapX = ax - b.width;
+  });
+  artY.forEach(function(ay) {
+    if (snapY === null && Math.abs(oT  - ay) < T) snapY = ay - 0;
+    if (snapY === null && Math.abs(oCy - ay) < T) snapY = ay - b.height / 2;
+    if (snapY === null && Math.abs(oB  - ay) < T) snapY = ay - b.height;
+  });
+
+  // ── Object-to-object snapping ──
+  canvas.getObjects().forEach(function(other) {
+    if (other === obj || other._isSnapLine || other._isSafeArea || other._isCutLine) return;
+    var ob = other.getBoundingRect(true);
+    var sL = ob.left,           sR = ob.left + ob.width;
+    var sT = ob.top,            sB = ob.top  + ob.height;
+    var sCx = ob.left + ob.width  / 2;
+    var sCy = ob.top  + ob.height / 2;
+
+    // X: left←→left, right←→right, left←→right, center←→center
+    if (snapX === null) {
+      if (Math.abs(oL  - sL)  < T) { snapX = sL;            lineColor = '#ff00ff'; }
+      else if (Math.abs(oR  - sR)  < T) { snapX = sR  - b.width;  lineColor = '#ff00ff'; }
+      else if (Math.abs(oL  - sR)  < T) { snapX = sR;            lineColor = '#ff00ff'; }
+      else if (Math.abs(oR  - sL)  < T) { snapX = sL  - b.width;  lineColor = '#ff00ff'; }
+      else if (Math.abs(oCx - sCx) < T) { snapX = sCx - b.width  / 2; lineColor = '#ff00ff'; }
+    }
+    // Y: top←→top, bottom←→bottom, top←→bottom, center←→center
+    if (snapY === null) {
+      if (Math.abs(oT  - sT)  < T) { snapY = sT;            lineColor = '#ff00ff'; }
+      else if (Math.abs(oB  - sB)  < T) { snapY = sB  - b.height; lineColor = '#ff00ff'; }
+      else if (Math.abs(oT  - sB)  < T) { snapY = sB;            lineColor = '#ff00ff'; }
+      else if (Math.abs(oB  - sT)  < T) { snapY = sT  - b.height; lineColor = '#ff00ff'; }
+      else if (Math.abs(oCy - sCy) < T) { snapY = sCy - b.height / 2; lineColor = '#ff00ff'; }
+    }
+  });
+
+  // Apply snapped position
+  if (snapX !== null) obj.set('left', snapX);
+  if (snapY !== null) obj.set('top',  snapY);
+
+  // Draw guide lines
+  _clearSnapLines();
+  var nb = obj.getBoundingRect(true);
+  if (snapX !== null) {
+    _drawSnapLine(nb.left + nb.width / 2, -50, nb.left + nb.width / 2, H + 50, lineColor);
+  }
+  if (snapY !== null) {
+    _drawSnapLine(-50, nb.top + nb.height / 2, W + 50, nb.top + nb.height / 2, lineColor);
+  }
+}
+
 function onObjectMoving(e) {
-  if (!document.getElementById('snap-enabled').checked) return;
-  var obj  = e.target;
-  var cx   = STATE.artboardW / 2, cy = STATE.artboardH / 2;
-  var b    = obj.getBoundingRect();
-  var SNAP = 10;
-  if (Math.abs(obj.left + b.width/2  - cx) < SNAP) obj.set('left', cx - b.width/2);
-  if (Math.abs(obj.top  + b.height/2 - cy) < SNAP) obj.set('top',  cy - b.height/2);
-  if (Math.abs(obj.left)                   < SNAP) obj.set('left', 0);
-  if (Math.abs(obj.top)                    < SNAP) obj.set('top',  0);
-  if (Math.abs(obj.left + b.width  - STATE.artboardW) < SNAP) obj.set('left', STATE.artboardW - b.width);
-  if (Math.abs(obj.top  + b.height - STATE.artboardH) < SNAP) obj.set('top',  STATE.artboardH - b.height);
+  if (!document.getElementById('snap-enabled').checked) {
+    _clearSnapLines();
+    return;
+  }
+  snapEngine(e.target);
 }
 
 /* ── DIE CUT ── */
