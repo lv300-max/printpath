@@ -1334,6 +1334,9 @@ select.pp-select:focus { border-color: rgba(0, 255, 156, 0.4); outline: none; }
 }
 
 /* ── FAST PATH BAR ── */
+/* layers panel removed — design treated as one unit */
+.layers-drawer { display: none !important; }
+
 /* ── SIDEBAR TOGGLE BUTTON ── */
 .pp-sidebar-toggle {
   font-variant-numeric: tabular-nums;

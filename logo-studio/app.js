@@ -37,7 +37,7 @@ window.addEventListener('load', function() {
     height: STATE.artboardH,
     backgroundColor: '#000000',
     preserveObjectStacking: true,
-    selection: true,
+    selection: false,          // no rubber-band multi-select
   });
 
   buildSwatches();
@@ -255,9 +255,15 @@ function handleImageUpload(e) {
       fabric.loadSVGFromString(ev.target.result, function(objs, opts) {
         var group = fabric.util.groupSVGElements(objs, opts);
         group.scaleToWidth(Math.round(STATE.artboardW * 0.4));
-        group.set({ left: STATE.artboardW/2, top: STATE.artboardH/2, originX: 'center', originY: 'center', _type: 'svg' });
+        group.set({ left: STATE.artboardW/2, top: STATE.artboardH/2,
+                    originX: 'center', originY: 'center', _type: 'svg',
+                    selectable: false, evented: false });
+        // Replace previous design
+        canvas.getObjects().filter(function(o) {
+          return !o._isSnapLine && !o._isSafeArea && !o._isCutLine && !o.ppDieCut;
+        }).forEach(function(o) { canvas.remove(o); });
         canvas.add(group);
-        canvas.setActiveObject(group);
+        canvas.discardActiveObject();
         canvas.renderAll();
         autoUpscale(group);
         toast('SVG placed');
@@ -269,13 +275,19 @@ function handleImageUpload(e) {
     reader2.onload = function(ev) {
       fabric.Image.fromURL(ev.target.result, function(img) {
         img.scaleToWidth(Math.round(STATE.artboardW * 0.4));
-        img.set({ left: STATE.artboardW/2, top: STATE.artboardH/2, originX: 'center', originY: 'center', _type: 'image' });
+        img.set({ left: STATE.artboardW/2, top: STATE.artboardH/2,
+                  originX: 'center', originY: 'center', _type: 'image',
+                  selectable: false, evented: false });
         // Store native source resolution for true DPI calc
         img._originalWidth  = img.width;
         img._originalHeight = img.height;
         img._scaleAtImport  = img.scaleX;
+        // Replace previous design
+        canvas.getObjects().filter(function(o) {
+          return !o._isSnapLine && !o._isSafeArea && !o._isCutLine && !o.ppDieCut;
+        }).forEach(function(o) { canvas.remove(o); });
         canvas.add(img);
-        canvas.setActiveObject(img);
+        canvas.discardActiveObject();
         canvas.renderAll();
         autoUpscale(img);
         toast('Image placed');
@@ -508,6 +520,32 @@ function alignObj(dir) {
   obj.setCoords();
   canvas.renderAll();
   updateTransformFields();
+}
+
+/* ── DESIGN BOUNDS ── */
+/* Returns unified bounding rect of all visible artwork objects.
+   Used by snap, DPI, contour — treats everything as one design. */
+function getDesignBounds() {
+  var objs = canvas.getObjects().filter(function(o) {
+    return o.visible && !o._isSnapLine && !o._isSafeArea && !o._isCutLine && !o.ppDieCut;
+  });
+  if (!objs.length) return null;
+  var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  objs.forEach(function(o) {
+    var b = o.getBoundingRect(true);
+    minX = Math.min(minX, b.left);
+    minY = Math.min(minY, b.top);
+    maxX = Math.max(maxX, b.left + b.width);
+    maxY = Math.max(maxY, b.top  + b.height);
+  });
+  return {
+    left:    minX,
+    top:     minY,
+    width:   maxX - minX,
+    height:  maxY - minY,
+    centerX: (minX + maxX) / 2,
+    centerY: (minY + maxY) / 2,
+  };
 }
 
 /* ── SNAP ENGINE ── */
@@ -1338,57 +1376,10 @@ function importJSON(e) {
 }
 
 /* ── LAYERS ── */
-function renderLayers() {
-  var list   = document.getElementById('layers-list');
-  var objs   = canvas.getObjects();
-  var active = canvas.getActiveObject();
-  list.innerHTML = '';
+/* ── LAYERS (no-op — layers panel removed) ── */
+function renderLayers() { /* layers UI removed — design treated as one unit */ }
 
-  if (!objs.length) {
-    list.innerHTML = '<div style="color:var(--text-dim);font-size:10px;padding:8px 0">No objects yet</div>';
-    return;
-  }
-
-  var iconMap = { 'i-text':'T', text:'T', rect:'▬', circle:'●', rounded:'▢',
-                  triangle:'▲', star:'★', hexagon:'⬡', image:'⊕', svg:'⊕', group:'⊞' };
-
-  var reversed = objs.slice().reverse();
-  reversed.forEach(function(obj) {
-    var type  = obj._type || obj.type || 'object';
-    var label = obj._label ||
-      ((type === 'i-text' || type === 'text') ? '"' + (obj.text || '').slice(0,14) + '"' : type);
-
-    var item = document.createElement('div');
-    item.className = 'layer-item' + (active === obj ? ' selected' : '');
-    item.innerHTML =
-      '<div class="layer-thumb">' + (iconMap[type] || '◆') + '</div>' +
-      '<div class="layer-name" title="' + label + '">' + label + '</div>' +
-      '<div class="layer-actions">' +
-        '<button class="layer-act vis-btn" title="Toggle visibility">' + (obj.visible === false ? '◌' : '◉') + '</button>' +
-        '<button class="layer-act del-btn" title="Delete">✕</button>' +
-      '</div>';
-
-    item.querySelector('.vis-btn').onclick = function(ev) {
-      ev.stopPropagation();
-      obj.set('visible', obj.visible === false ? true : false);
-      canvas.renderAll(); renderLayers();
-    };
-    item.querySelector('.del-btn').onclick = function(ev) {
-      ev.stopPropagation();
-      canvas.remove(obj); canvas.renderAll(); renderLayers();
-    };
-    item.onclick = function() {
-      canvas.setActiveObject(obj); canvas.renderAll(); onSelect();
-    };
-    list.appendChild(item);
-  });
-}
-
-function toggleLayersDrawer() {
-  STATE.layersOpen = !STATE.layersOpen;
-  document.getElementById('layers-list').style.display = STATE.layersOpen ? 'flex' : 'none';
-  document.querySelector('.layers-toggle').textContent  = STATE.layersOpen ? '▼' : '▲';
-}
+function toggleLayersDrawer() { /* no-op */ }
 
 /* ── KEYBOARD ── */
 function handleKey(e) {
