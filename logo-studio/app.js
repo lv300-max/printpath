@@ -678,79 +678,130 @@ function handleKey(e) {
     return;
   }
   if (e.key === 'Delete' || e.key === 'Backspace') deleteObject();
-  if (e.key === 'Escape') closeUpgrade();
+  if (e.key === 'Escape') closeShopUpgrade();
 }
 
-/* ── UPGRADE MODAL ── */
-var currentUser = {
-  plan: localStorage.getItem('pp_plan') || 'free',
+/* ══════════════════════════════════════════════════════════════
+   SHOP PLAN SYSTEM
+   ──────────────────────────────────────────────────────────────
+   Users always get full frictionless access.
+   The tool gets MORE POWERFUL based on the shop's level.
+   Zero locks, zero modals, zero friction for users.
+
+   Level  Price    What it unlocks
+   1      free     Basic editor (default)
+   2      $29/mo   Resize + scale tools
+   3      $59/mo   Color adjust + CMYK
+   4      $99/mo   Die-cut + sticker mode
+   5      $149/mo  Full pro — all tools
+══════════════════════════════════════════════════════════════ */
+
+var currentShop = {
+  id:        new URLSearchParams(window.location.search).get('shopId') || 'demo',
+  planLevel: 1,
+  name:      '',
 };
 
-function updateWatermark() {
-  var wm   = document.getElementById('pp-watermark');
-  var hint = document.getElementById('pp-export-hint');
-  if (!wm) return;
-  if (currentUser.plan === 'pro') {
-    wm.style.display = 'none';
-    if (hint) hint.classList.add('hidden');
-  } else {
-    wm.style.display = 'block';
-    if (hint) hint.classList.remove('hidden');
+var isAdminMode = window.location.search.includes('admin=true');
+
+function hasLevel(required) {
+  return currentShop.planLevel >= required;
+}
+
+async function loadShopPlan() {
+  try {
+    if (typeof firebase !== 'undefined' && firebase.firestore) {
+      var snap = await firebase.firestore().doc('shops/' + currentShop.id).get();
+      if (snap.exists) {
+        var data = snap.data();
+        currentShop.planLevel = Number(data.planLevel) || 1;
+        currentShop.name      = data.name || '';
+      }
+    } else {
+      var stored = localStorage.getItem('pp_shop_' + currentShop.id);
+      if (stored) {
+        var parsed = JSON.parse(stored);
+        currentShop.planLevel = Number(parsed.planLevel) || 1;
+        currentShop.name      = parsed.name || '';
+      }
+    }
+  } catch(e) {
+    console.warn('[PrintPath] Could not load shop plan:', e);
+  }
+  applyShopLevel();
+}
+
+function applyShopLevel() {
+  var level = currentShop.planLevel;
+
+  // Watermark only on unpaid level-1 shops
+  var wm = document.getElementById('pp-watermark');
+  if (wm) wm.style.display = (level >= 2) ? 'none' : 'block';
+
+  // Admin upgrade button
+  var adminBtn = document.getElementById('shop-admin-btn');
+  if (adminBtn) {
+    adminBtn.style.display = isAdminMode ? 'block' : 'none';
+    var labels = ['', '$29/mo', '$59/mo', '$99/mo', '$149/mo'];
+    adminBtn.textContent = level < 5
+      ? '✦ Upgrade Shop — ' + labels[level]
+      : '✦ Full Pro Active';
   }
 }
 
-// Run on load
-updateWatermark();
-
-function requirePro(featureName) {
-  if (currentUser.plan === 'pro') return true;
-  toast('\u2665 Pro tool \u2014 unlock to continue');
-  setTimeout(function() { showUpgradeModal(featureName); }, 600);
-  return false;
-}
-
-function showUpgradeModal(featureName) {
-  var modal = document.getElementById('upgrade-modal');
+// ── SHOP UPGRADE MODAL (admin only) ──
+function showShopUpgrade() {
+  var modal = document.getElementById('shop-upgrade-modal');
   if (!modal) return;
+  var level = currentShop.planLevel;
+  var tiers = [
+    { price: '$29/mo',  label: 'Level 2 — Resize & Scale', tier: 2 },
+    { price: '$59/mo',  label: 'Level 3 — Color Tools',    tier: 3 },
+    { price: '$99/mo',  label: 'Level 4 — Die-Cut & Print',tier: 4 },
+    { price: '$149/mo', label: 'Level 5 — Full Pro',       tier: 5 },
+  ];
+  var next = tiers[Math.min(level - 1, tiers.length - 1)];
+  var heading = modal.querySelector('.shop-up-heading');
+  var btnEl   = modal.querySelector('.shop-up-btn');
+  if (heading && next) heading.textContent = next.label;
+  if (btnEl   && next) { btnEl.textContent = 'Upgrade — ' + next.price; btnEl.dataset.tier = next.tier; }
   modal.classList.remove('hidden');
-  // Highlight which feature they tried to use
-  if (featureName) {
-    var sub = modal.querySelector('.pp-up-sub');
-    if (sub) sub.textContent = '\u201c' + featureName + '\u201d requires Pro. Unlock to continue.';
-  }
 }
 
-function closeUpgrade() {
-  var modal = document.getElementById('upgrade-modal');
+function closeShopUpgrade() {
+  var modal = document.getElementById('shop-upgrade-modal');
   if (modal) modal.classList.add('hidden');
 }
 
-async function upgradeToPro() {
-  var btn = document.querySelector('.pp-up-btn');
-  if (btn) { btn.textContent = 'Redirecting\u2026'; btn.disabled = true; }
+async function upgradeShop(tierOverride) {
+  var btn  = document.querySelector('.shop-up-btn');
+  var tier = tierOverride || (btn && parseInt(btn.dataset.tier)) || (currentShop.planLevel + 1);
+  if (btn) { btn.textContent = 'Redirecting…'; btn.disabled = true; }
   try {
-    var res  = await fetch('/create-subscription');
+    var res  = await fetch('/.netlify/functions/create-shop-subscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shopId: currentShop.id, tier: tier }),
+    });
     var data = await res.json();
-    if (data.url) {
-      window.location = data.url;
-    } else {
-      toast('\u26a0 Could not start checkout \u2014 try again');
-      if (btn) { btn.textContent = 'Unlock Pro \u2014 $29/mo'; btn.disabled = false; }
-    }
+    if (data.url) { window.location = data.url; return; }
+    throw new Error('No checkout URL');
   } catch(e) {
-    toast('\u26a0 Network error \u2014 try again');
-    if (btn) { btn.textContent = 'Unlock Pro \u2014 $29/mo'; btn.disabled = false; }
+    toast('⚠ Could not start checkout — try again');
+    if (btn) { btn.textContent = 'Upgrade Shop'; btn.disabled = false; }
   }
 }
 
-// Check for successful upgrade return
-(function checkProReturn() {
+(function checkShopReturn() {
   var params = new URLSearchParams(window.location.search);
-  if (params.get('pro') === 'success') {
-    currentUser.plan = 'pro';
-    localStorage.setItem('pp_plan', 'pro');
-    updateWatermark();
-    history.replaceState(null, '', window.location.pathname);
-    toast('✦ Pro unlocked — all tools available');
+  if (params.get('shop_pro') === 'success') {
+    var tier = parseInt(params.get('tier')) || (currentShop.planLevel + 1);
+    currentShop.planLevel = tier;
+    localStorage.setItem('pp_shop_' + currentShop.id, JSON.stringify(currentShop));
+    history.replaceState(null, '', window.location.pathname + (isAdminMode ? '?admin=true&shopId=' + currentShop.id : ''));
+    applyShopLevel();
+    toast('✦ Shop upgraded to Level ' + tier + ' — new tools active');
   }
 })();
+
+loadShopPlan();

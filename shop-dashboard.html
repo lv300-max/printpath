@@ -1225,6 +1225,12 @@
         <span class="hstat-delta" style="color:var(--purple)" id="stat-platform-delta">this week</span>
       </div>
     </div>
+      <div class="hstat" id="plan-level-stat">
+        <span class="hstat-label">Shop Plan</span>
+        <span class="hstat-val" id="stat-plan-level" style="color:var(--neon)">Level 1</span>
+        <span class="hstat-delta" id="stat-plan-upgrade" style="cursor:pointer"></span>
+      </div>
+    </div>
 
     <div class="header-right">
       <div class="live-dot">Live</div>
@@ -1866,6 +1872,49 @@ function markDesignUsed(imageData) {
   updateStats();
   addFeedItem({ color: 'purple', main: 'Design used in order', sub: 'just now' });
 }
+</script>
+
+<script>
+// ── SHOP PLAN LEVEL DISPLAY ──────────────────────────────────────────
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var shopId = params.get('shopId') || 'demo';
+  var isAdmin = params.get('admin') === 'true';
+
+  // Check for Stripe return
+  if (params.get('shop_pro') === 'success') {
+    var tier = parseInt(params.get('tier') || '2', 10);
+    var key = 'pp_shop_' + shopId;
+    var stored = JSON.parse(localStorage.getItem(key) || '{}');
+    stored.planLevel = tier;
+    localStorage.setItem(key, JSON.stringify(stored));
+    history.replaceState({}, '', window.location.pathname + '?shopId=' + shopId + (isAdmin ? '&admin=true' : ''));
+  }
+
+  var key = 'pp_shop_' + shopId;
+  var stored = JSON.parse(localStorage.getItem(key) || '{}');
+  var level = stored.planLevel || 1;
+
+  var levelEl = document.getElementById('stat-plan-level');
+  var upgradeEl = document.getElementById('stat-plan-upgrade');
+  if (!levelEl) return;
+
+  var LEVEL_NAMES = { 1: 'Starter', 2: 'Resize & Scale', 3: 'Color Tools', 4: 'Die-Cut', 5: 'Full Pro' };
+  levelEl.textContent = 'Level ' + level + (level > 1 ? ' — ' + (LEVEL_NAMES[level] || '') : '');
+
+  if (level < 5 && isAdmin) {
+    upgradeEl.textContent = '↑ Upgrade to Level ' + (level + 1);
+    upgradeEl.style.color = 'var(--neon)';
+    upgradeEl.onclick = function() {
+      window.location.href = '/logo-studio/?shopId=' + shopId + '&admin=true';
+    };
+  } else if (level === 5) {
+    upgradeEl.textContent = '✓ Full Pro';
+    upgradeEl.style.color = 'var(--neon)';
+  } else {
+    upgradeEl.textContent = level === 1 ? 'Free plan' : 'Active';
+  }
+})();
 </script>
 </body>
 </html>

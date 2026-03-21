@@ -1245,3 +1245,57 @@ select.pp-select:focus { border-color: rgba(0, 255, 156, 0.4); outline: none; }
   transform: translateY(-1px);
 }
 
+
+/* ── SHOP TIER GRID ── */
+.shop-tier-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.shop-tier-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(0,255,156,0.15);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  color: var(--text-main);
+  font-family: inherit;
+}
+
+.shop-tier-btn:hover {
+  border-color: rgba(0,255,156,0.4);
+  background: rgba(0,255,156,0.05);
+}
+
+.shop-tier-btn.tier-highlight {
+  border-color: rgba(0,255,156,0.5);
+  background: rgba(0,255,156,0.09);
+}
+
+.tier-level {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--neon);
+  text-transform: uppercase;
+}
+
+.tier-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-soft);
+  text-align: center;
+}
+
+.tier-price {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-main);
+}

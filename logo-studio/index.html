@@ -340,25 +340,36 @@
 <!-- SHOP UPGRADE MODAL (admin only) -->
 <div id="shop-upgrade-modal" class="pp-upgrade hidden" onclick="if(event.target===this)closeShopUpgrade()">
   <div class="pp-upgrade-box">
-    <div class="pp-up-eyebrow">✦ PrintPath Pro</div>
-    <h2 class="pp-up-heading">Upgrade Your Shop</h2>
-    <p class="pp-up-sub">Unlock full design tools for your customers. They design it themselves — you just print it.</p>
-    <ul class="pp-up-features">
-      <li>✔ Remove PrintPath watermark</li>
-      <li>✔ Advanced editing tools</li>
-      <li>✔ Perfect print scaling</li>
-      <li>✔ Die-cut &amp; sticker mode</li>
-      <li>✔ Faster customer flow</li>
-    </ul>
-    <div class="pp-up-price">
-      <span class="pp-up-amount">$29</span>
-      <span class="pp-up-per">/month</span>
+    <div class="pp-up-eyebrow">✦ PrintPath Shop Plans</div>
+    <h2 class="pp-up-heading shop-up-heading">Level 2 — Resize &amp; Scale</h2>
+    <p class="pp-up-sub">Your customers design it themselves. You just print it.</p>
+    <div class="shop-tier-grid">
+      <button class="shop-tier-btn" onclick="upgradeShop(2)">
+        <span class="tier-level">L2</span>
+        <span class="tier-name">Resize &amp; Scale</span>
+        <span class="tier-price">$29/mo</span>
+      </button>
+      <button class="shop-tier-btn" onclick="upgradeShop(3)">
+        <span class="tier-level">L3</span>
+        <span class="tier-name">+ Color Tools</span>
+        <span class="tier-price">$59/mo</span>
+      </button>
+      <button class="shop-tier-btn" onclick="upgradeShop(4)">
+        <span class="tier-level">L4</span>
+        <span class="tier-name">+ Die-Cut</span>
+        <span class="tier-price">$99/mo</span>
+      </button>
+      <button class="shop-tier-btn tier-highlight" onclick="upgradeShop(5)">
+        <span class="tier-level">L5</span>
+        <span class="tier-name">Full Pro</span>
+        <span class="tier-price">$149/mo</span>
+      </button>
     </div>
-    <button onclick="upgradeShop()" class="pp-up-btn shop-up-btn">Upgrade Shop — $29/mo</button>
+    <button onclick="upgradeShop()" class="pp-up-btn shop-up-btn" data-tier="2">Upgrade Shop</button>
     <button onclick="closeShopUpgrade()" class="pp-up-close">Not now</button>
     <div class="pp-up-trust">
-      <span>Used by print shops</span><span class="pp-up-dot">·</span>
-      <span>Cancel any time</span>
+      <span>Cancel any time</span><span class="pp-up-dot">·</span>
+      <span>Faster orders guaranteed</span>
     </div>
   </div>
 </div>
