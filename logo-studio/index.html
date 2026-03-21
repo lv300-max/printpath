@@ -13,116 +13,31 @@
   inset: 0;
   background: #000;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   z-index: 99999;
   pointer-events: none;
 }
-#pp-boot .pp-boot-scan {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent 0%, #00ff9c 40%, #00cfff 60%, transparent 100%);
-  box-shadow: 0 0 12px #00ff9c, 0 0 4px #00cfff;
-  animation: ppScan 0.9s cubic-bezier(0.4,0,0.2,1) forwards;
-}
-@keyframes ppScan {
-  from { top: 0;    opacity: 1; }
-  to   { top: 100%; opacity: 0.4; }
-}
 #pp-boot .pp-boot-logo {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 26px;
+  font-size: 12vw;
   font-weight: 800;
-  letter-spacing: 0.22em;
+  letter-spacing: 6px;
   color: #fff;
   text-transform: uppercase;
-  position: relative;
-  overflow: hidden;
   opacity: 0;
-  text-shadow: 0 0 6px rgba(255,255,255,0.08);
-  animation: ppFadeIn 0.4s ease forwards 0.95s;
+  filter: brightness(1.2);
+  animation: ppBurnIn 1s ease forwards;
 }
-#pp-boot .pp-boot-logo::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -120%;
-  width: 80%;
-  height: 100%;
-  transform: skewX(-20deg);
-  background:
-    linear-gradient(
-      120deg,
-      transparent,
-      rgba(255,255,255,0.15),
-      rgba(255,255,255,0.4),
-      rgba(255,255,255,0.15),
-      transparent
-    ),
-    repeating-linear-gradient(
-      90deg,
-      rgba(0,255,156,0.15)  0px,
-      rgba(0,255,156,0.15)  2px,
-      transparent           2px,
-      transparent           6px,
-      rgba(0,200,255,0.15)  6px,
-      rgba(0,200,255,0.15)  8px,
-      transparent           8px,
-      transparent          12px
-    );
-  animation: ppSheen 1s ease forwards 1.35s;
-}
-@keyframes ppSheen {
-  0%   { left: -120%; opacity: 1; }
-  40%  { opacity: 0.9; }
-  50%  { opacity: 1; }
-  100% { left: 140%;  opacity: 1; }
-}
-#pp-boot .pp-boot-sub {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  color: #00ff9c;
-  opacity: 0;
-  margin-top: 6px;
-  text-transform: uppercase;
-  animation: ppFadeIn 0.4s ease forwards 1.15s;
-}
-#pp-boot .pp-boot-bar {
-  width: 0;
-  height: 1px;
-  background: linear-gradient(90deg, #00ff9c, #00cfff);
-  margin-top: 14px;
-  opacity: 0;
-  animation: ppBar 0.45s ease forwards 1.1s;
-}
-@keyframes ppFadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes ppBar {
-  from { width: 0;     opacity: 0.6; }
-  to   { width: 120px; opacity: 0.6; }
-}
-#pp-boot.pp-boot-out {
-  animation: ppBootOut 0.35s ease forwards;
-}
-@keyframes ppBootOut {
-  to { opacity: 0; }
+@keyframes ppBurnIn {
+  to { opacity: 1; }
 }
 </style>
 </head>
 <body>
 
 <div id="pp-boot" aria-hidden="true">
-  <div class="pp-boot-scan"></div>
-  <div class="pp-boot-logo">PrintPath</div>
-  <div class="pp-boot-sub">Optimizing for Print</div>
-  <div class="pp-boot-bar"></div>
+  <div class="pp-boot-logo">PRINTPATH</div>
 </div>
 
 <header class="pp-header">
@@ -497,7 +412,7 @@
 <script src="app.js"></script>
 <script>
 (function() {
-  // Soft metallic swipe — short filtered noise burst
+  // Soft tick on logo appear
   try {
     var ctx = new (window.AudioContext || window.webkitAudioContext)();
     var buf = ctx.createBuffer(1, ctx.sampleRate * 0.12, ctx.sampleRate);
@@ -513,15 +428,14 @@
     gain.gain.setValueAtTime(0.1, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.12);
     src.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
-    src.start(ctx.currentTime + 0.95); // fires as logo appears
+    src.start(ctx.currentTime);
   } catch(e) {}
 
   var boot = document.getElementById('pp-boot');
   if (!boot) return;
   setTimeout(function() {
-    boot.classList.add('pp-boot-out');
-    setTimeout(function() { boot.remove(); }, 360);
-  }, 1650);
+    boot.remove();
+  }, 1100);
 })();
 </script>
 </body>
