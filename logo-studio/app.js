@@ -15,12 +15,15 @@ var STATE = {
 };
 
 /* ── SHOP LOCK RULES ── */
-/* Shops can override via setShopRules() from their embed config. */
+/* Shops can override via setShopRules() / setShopDPI() from their embed config. */
 var SHOP_RULES = {
   minDPI:      300,
   minSize:     600,   // minimum artboard px (width or height)
   allowLowDPI: false, // set true to let shop bypass DPI gate
 };
+
+/* Shop-controlled target DPI. Default 300. Premium shops set 400. */
+var SHOP_DPI = 300;
 
 var PRINT_SWATCHES = [
   '#000000','#ffffff','#1a1a2e','#0d1b2a',
@@ -1014,6 +1017,7 @@ function updateLockState() {
 /* Override shop quality rules from embed config */
 function setShopRules(config) {
   SHOP_RULES = Object.assign({}, SHOP_RULES, config);
+  if (config.minDPI) SHOP_DPI = config.minDPI; // keep DPI target in sync
   updateLockState();
   calcDPI();
   calcTrueDPI();
@@ -1180,10 +1184,10 @@ function runFastPath() {
     try {
       // 1. Ensure sticker mode so contour cut fires
       if (STATE.mode !== 'sticker') setMode('sticker');
-      // 2. Auto-upscale every image to print resolution
+      // 2. Snap every image to shop DPI target (pixels = DPI × inches)
       canvas.getObjects().forEach(function(o) {
         if (o.visible && !o._isSnapLine && !o._isSafeArea && !o._isCutLine && o.type === 'image')
-          autoUpscale(o);
+          snapToDPI(o);
       });
       // 3. Center, bump canvas size, fit to safe area
       fastFinish();
