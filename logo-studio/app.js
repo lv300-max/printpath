@@ -40,12 +40,12 @@ window.addEventListener('load', function() {
   canvas.on('selection:created', onSelect);
   canvas.on('selection:updated', onSelect);
   canvas.on('selection:cleared', onDeselect);
-  canvas.on('object:modified', function() { _clearSnapLines(); renderLayers(); updateTransformFields(); applyContourCut(); calcDPI(); });
+  canvas.on('object:modified', function() { _clearSnapLines(); renderLayers(); updateTransformFields(); applyContourCut(); calcDPI(); calcTrueDPI(); });
   canvas.on('object:moving', onObjectMoving);
-  canvas.on('mouse:up', function() { _clearSnapLines(); calcDPI(); });
-  canvas.on('object:scaling', function() { calcDPI(); });
-  canvas.on('object:added', function() { renderLayers(); applyContourCut(); calcDPI(); });
-  canvas.on('object:removed', function() { renderLayers(); applyContourCut(); calcDPI(); });
+  canvas.on('mouse:up', function() { _clearSnapLines(); calcDPI(); calcTrueDPI(); });
+  canvas.on('object:scaling', function() { calcDPI(); calcTrueDPI(); });
+  canvas.on('object:added', function() { renderLayers(); applyContourCut(); calcDPI(); calcTrueDPI(); });
+  canvas.on('object:removed', function() { renderLayers(); applyContourCut(); calcDPI(); calcTrueDPI(); });
 
   document.addEventListener('keydown', handleKey);
   document.getElementById('img-upload').addEventListener('change', handleImageUpload);
@@ -253,6 +253,10 @@ function handleImageUpload(e) {
       fabric.Image.fromURL(ev.target.result, function(img) {
         img.scaleToWidth(Math.round(STATE.artboardW * 0.4));
         img.set({ left: STATE.artboardW/2, top: STATE.artboardH/2, originX: 'center', originY: 'center', _type: 'image' });
+        // Store native source resolution for true DPI calc
+        img._originalWidth  = img.width;
+        img._originalHeight = img.height;
+        img._scaleAtImport  = img.scaleX;
         canvas.add(img);
         canvas.setActiveObject(img);
         canvas.renderAll();
@@ -751,6 +755,7 @@ function autoUpscale(obj) {
   obj.setCoords();
   canvas.renderAll();
   calcDPI();
+  calcTrueDPI();
 
   var finalDPI = Math.round(pxW * factor / iw);
   if (finalDPI < 150) {
@@ -759,6 +764,63 @@ function autoUpscale(obj) {
     toast('⚠ Auto-scaled — still below 300 DPI');
   } else {
     toast('✦ Auto-enhanced to print quality');
+  }
+}
+
+/* ── TRUE DPI (SOURCE RESOLUTION CHECK) ── */
+/* Measures actual image pixel density vs displayed print size.
+   A 100×100px image scaled up to fill 4" prints at only 25 DPI — this catches that.
+   For vector/text objects, falls back to displayed-bounds DPI. */
+function calcTrueDPI() {
+  if (!canvas) return;
+  var iw = parseFloat(document.getElementById('inches-w').value) || 3;
+
+  var images = canvas.getObjects().filter(function(o) {
+    return o.visible && !o._isSnapLine && !o._isSafeArea && !o._isCutLine
+           && o.type === 'image' && o._originalWidth;
+  });
+
+  if (!images.length) return; // no images — calcDPI() already handled display
+
+  var worstDPI = Infinity;
+  images.forEach(function(img) {
+    // Native source pixels at current scale
+    var nativePx = img._originalWidth * img.scaleX;
+    var dpi = nativePx / iw;
+    if (dpi < worstDPI) worstDPI = dpi;
+  });
+
+  var trueDPI = Math.round(worstDPI);
+  STATE.dpi        = trueDPI;
+  STATE.printReady = trueDPI >= 300;
+
+  var numEl     = document.getElementById('dpi-number');
+  var statusEl  = document.getElementById('dpi-status');
+  var displayEl = document.getElementById('dpi-display');
+  var badgeEl   = document.getElementById('dpi-badge');
+  var exportBtn      = document.getElementById('export-btn');
+  var exportBlocked  = document.getElementById('export-blocked');
+
+  if (numEl) numEl.textContent = trueDPI;
+
+  if (trueDPI >= 300) {
+    if (statusEl)  statusEl.textContent = '✦ Print Ready';
+    if (displayEl) displayEl.className  = 'dpi-display';
+    if (badgeEl) { badgeEl.className = 'dpi-badge ready'; badgeEl.textContent = trueDPI + ' DPI ✓'; }
+    if (exportBtn)     exportBtn.disabled = false;
+    if (exportBlocked) exportBlocked.style.display = 'none';
+  } else if (trueDPI >= 150) {
+    if (statusEl)  statusEl.textContent = '⚠ Low — Scale Up';
+    if (displayEl) displayEl.className  = 'dpi-display warn';
+    if (badgeEl) { badgeEl.className = 'dpi-badge warn'; badgeEl.textContent = trueDPI + ' DPI ⚠'; }
+    if (exportBtn)     exportBtn.disabled = true;
+    if (exportBlocked) exportBlocked.style.display = 'block';
+  } else {
+    if (statusEl)  statusEl.textContent = '✕ Too Low — Bad Source';
+    if (displayEl) displayEl.className  = 'dpi-display warn';
+    if (badgeEl) { badgeEl.className = 'dpi-badge bad'; badgeEl.textContent = trueDPI + ' DPI ✕'; }
+    if (exportBtn)     exportBtn.disabled = true;
+    if (exportBlocked) exportBlocked.style.display = 'block';
   }
 }
 
