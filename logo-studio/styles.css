@@ -1334,6 +1334,24 @@ select.pp-select:focus { border-color: rgba(0, 255, 156, 0.4); outline: none; }
 }
 
 /* ── FAST PATH BAR ── */
+/* ── SIDEBAR TOGGLE BUTTON ── */
+.pp-sidebar-toggle {
+  font-variant-numeric: tabular-nums;
+  min-width: 76px;
+  text-align: center;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  border-radius: 7px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.pp-sidebar-toggle:hover {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(0,234,255,0.35) !important;
+}
+.studio-layout.pp-focus-mode ~ header .pp-sidebar-toggle,
+.pp-focus-mode .pp-sidebar-toggle {
+  color: #00eaff;
+}
+
 .pp-fast-bar {
   position: fixed;
   bottom: 24px;

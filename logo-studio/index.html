@@ -117,9 +117,10 @@ document.addEventListener('DOMContentLoaded', function() {
   <div class="pp-header-right">
     <span class="header-trust">Print-ready output guaranteed</span>
     <div id="dpi-badge" class="dpi-badge checking">— DPI</div>
-    <button class="pp-btn-ghost" onclick="saveProject()">💾 Save</button>
-    <button class="pp-btn-ghost" onclick="loadProject()">📂 Load</button>
-    <button class="pp-btn-ghost danger" onclick="resetProject()">↺ Reset</button>
+    <button id="sidebar-toggle" class="pp-btn-ghost pp-sidebar-toggle" onclick="toggleSidebars()" title="Hide / show sidebars">&#x25a3; Panels</button>
+    <button class="pp-btn-ghost" onclick="saveProject()">&#128190; Save</button>
+    <button class="pp-btn-ghost" onclick="loadProject()">&#128194; Load</button>
+    <button class="pp-btn-ghost danger" onclick="resetProject()">&#x21ba; Reset</button>
   </div>
 </header>
 

@@ -82,11 +82,11 @@ window.addEventListener('load', function() {
     });
   });
 
-  // Tab → toggle focus mode (collapse sidebars for distraction-free canvas)
+  // Tab → toggle sidebars (same as clicking the Panels button)
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Tab' && !e.target.matches('input, textarea, select')) {
       e.preventDefault();
-      document.querySelector('.studio-layout').classList.toggle('pp-focus-mode');
+      toggleSidebars();
     }
   });
 
@@ -1120,6 +1120,16 @@ function fastFinish() {
 function _fastFinishDone(btn) {
   if (btn) { btn.disabled = false; btn.textContent = '✦ Finish with PrintPath'; }
   toast('Optimized by PrintPath');
+}
+
+/* ── SIDEBAR TOGGLE ── */
+function toggleSidebars() {
+  var layout = document.querySelector('.studio-layout');
+  var btn    = document.getElementById('sidebar-toggle');
+  if (!layout) return;
+  layout.classList.toggle('pp-focus-mode');
+  var hidden = layout.classList.contains('pp-focus-mode');
+  if (btn) btn.textContent = hidden ? '□ Panels' : '▣ Panels';
 }
 
 /* ── RUN FAST PATH ── */
