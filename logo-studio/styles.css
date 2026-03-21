@@ -1246,6 +1246,18 @@ select.pp-select:focus { border-color: rgba(0, 255, 156, 0.4); outline: none; }
 }
 
 
+/* ── EXPORT PRINT SVG BUTTON ── */
+.pp-export-svg-btn {
+  background: rgba(255,0,255,0.08);
+  border-color: rgba(255,0,255,0.35);
+  color: #ff66ff;
+}
+.pp-export-svg-btn:hover {
+  background: rgba(255,0,255,0.15);
+  box-shadow: 0 0 14px rgba(255,0,255,0.2);
+  border-color: rgba(255,0,255,0.6);
+}
+
 /* ── FINISH WITH PRINTPATH BUTTON ── */
 .fast-finish-wrap {
   display: flex;

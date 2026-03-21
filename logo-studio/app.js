@@ -793,9 +793,61 @@ function resetProject() {
 }
 
 function exportJSON() {
-  var blob = new Blob([JSON.stringify(canvas.toJSON(['_type','_label']), null, 2)], { type: 'application/json' });
+  var blob = new Blob([JSON.stringify(canvas.toJSON(['_type','_label','ppDieCut']), null, 2)], { type: 'application/json' });
   downloadBlob(blob, (document.getElementById('export-name').value || 'my-logo') + '.json');
   toast('✦ Project exported');
+}
+
+/* ── EXPORT PRINT SVG (ART + CUT PATH) ── */
+/* Exports artwork + magenta contour cut line in one SVG.
+   Magenta (#FF00FF) is the industry standard cut colour for
+   Illustrator, Cricut, Roland, and most RIP software. */
+function exportPrintSVG() {
+  var objects = canvas.getObjects();
+  if (!objects.length) { toast('⚠ Nothing to export'); return; }
+
+  var name = document.getElementById('export-name').value || 'printpath-export';
+  var hasCut = objects.some(function(o) { return o.ppDieCut; });
+  if (!hasCut) { toast('⚠ No cut path — run Finish with PrintPath first'); }
+
+  // Build SVG via a temp StaticCanvas so we don't touch the live canvas
+  var exportCanvas = new fabric.StaticCanvas(null, {
+    width:  canvas.width,
+    height: canvas.height,
+  });
+
+  var total  = objects.length;
+  var clones = [];
+  var done   = 0;
+
+  objects.forEach(function(obj) {
+    obj.clone(function(clone) {
+      clone.set({ selectable: false, evented: false });
+
+      if (obj.ppDieCut) {
+        // Industry-standard magenta cut line
+        clone.set({
+          stroke:      '#FF00FF',
+          strokeWidth: 1,
+          fill:        'transparent',
+        });
+      }
+
+      clones.push({ order: canvas.getObjects().indexOf(obj), clone: clone });
+      done++;
+
+      if (done === total) {
+        // Preserve layer order
+        clones.sort(function(a, b) { return a.order - b.order; });
+        clones.forEach(function(item) { exportCanvas.add(item.clone); });
+
+        var svg = exportCanvas.toSVG({ suppressPreamble: false });
+        var blob = new Blob([svg], { type: 'image/svg+xml' });
+        downloadBlob(blob, name + '-print.svg');
+        toast('✦ Print SVG exported — cut path included');
+      }
+    }, ['ppDieCut']);
+  });
 }
 
 function importJSONClick() { document.getElementById('import-json-input').click(); }
