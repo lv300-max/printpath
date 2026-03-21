@@ -27,10 +27,13 @@
   text-transform: uppercase;
   opacity: 0;
   filter: brightness(1.2);
-  animation: ppBurnIn 1s ease forwards;
+  animation: ppBurnInOut 1.4s ease forwards;
 }
-@keyframes ppBurnIn {
-  to { opacity: 1; }
+@keyframes ppBurnInOut {
+  0%   { opacity: 0; }
+  20%  { opacity: 1; }
+  70%  { opacity: 1; }
+  100% { opacity: 0; }
 }
 </style>
 </head>
@@ -435,7 +438,7 @@
   if (!boot) return;
   setTimeout(function() {
     boot.remove();
-  }, 1100);
+  }, 1400);
 })();
 </script>
 </body>
