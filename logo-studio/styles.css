@@ -1258,6 +1258,23 @@ select.pp-select:focus { border-color: rgba(0, 255, 156, 0.4); outline: none; }
   border-color: rgba(255,0,255,0.6);
 }
 
+.export-split-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.pp-split-btn {
+  font-size: 10px;
+  padding: 5px 6px;
+}
+
+.pp-preset-select {
+  font-size: 10px;
+  padding: 5px 8px;
+  cursor: pointer;
+}
+
 /* ── FINISH WITH PRINTPATH BUTTON ── */
 .fast-finish-wrap {
   display: flex;

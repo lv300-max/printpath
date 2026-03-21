@@ -543,7 +543,7 @@ function applyContourCut() {
   var hull = lower.concat(upper);
 
   // Offset hull points outward by bleed padding
-  var BLEED = 14;
+  var BLEED = window._presetBleed || 14;
   var cx = hull.reduce(function(s, p) { return s + p.x; }, 0) / hull.length;
   var cy = hull.reduce(function(s, p) { return s + p.y; }, 0) / hull.length;
   var expanded = hull.map(function(p) {
@@ -851,6 +851,78 @@ function exportPrintSVG() {
 }
 
 function importJSONClick() { document.getElementById('import-json-input').click(); }
+
+/* ── SPLIT EXPORT (ART FILE + CUT FILE SEPARATELY) ── */
+function exportSplitSVG() {
+  var objects = canvas.getObjects();
+  if (!objects.length) { toast('⚠ Nothing to export'); return; }
+
+  var name = document.getElementById('export-name').value || 'printpath';
+  var hasCut = objects.some(function(o) { return o.ppDieCut; });
+  if (!hasCut) { toast('⚠ No cut path — run Finish with PrintPath first'); return; }
+
+  var W = canvas.width, H = canvas.height;
+  var artCanvas = new fabric.StaticCanvas(null, { width: W, height: H });
+  var cutCanvas = new fabric.StaticCanvas(null, { width: W, height: H });
+
+  var total = objects.length, done = 0;
+
+  objects.forEach(function(obj) {
+    obj.clone(function(clone) {
+      clone.set({ selectable: false, evented: false });
+      if (obj.ppDieCut) {
+        clone.set({ stroke: '#FF00FF', strokeWidth: 1, fill: 'transparent' });
+        cutCanvas.add(clone);
+      } else {
+        artCanvas.add(clone);
+      }
+      done++;
+      if (done === total) {
+        var artSVG = artCanvas.toSVG();
+        var cutSVG = cutCanvas.toSVG();
+        downloadBlob(new Blob([artSVG], { type: 'image/svg+xml' }), name + '-art.svg');
+        // slight delay so browser allows both downloads
+        setTimeout(function() {
+          downloadBlob(new Blob([cutSVG], { type: 'image/svg+xml' }), name + '-cut.svg');
+        }, 300);
+        toast('✦ Art + Cut files exported');
+      }
+    }, ['ppDieCut']);
+  });
+}
+
+/* ── PDF EXPORT ── */
+function exportPDF() {
+  if (!window.jspdf) { toast('⚠ PDF library not loaded yet — try again'); return; }
+  var name = document.getElementById('export-name').value || 'printpath';
+  var dataURL = canvas.toDataURL({ format: 'png', multiplier: 3 });
+  var jsPDF = window.jspdf.jsPDF;
+  var pdf = new jsPDF({
+    orientation: canvas.width >= canvas.height ? 'landscape' : 'portrait',
+    unit: 'px',
+    format: [canvas.width, canvas.height],
+  });
+  pdf.addImage(dataURL, 'PNG', 0, 0, canvas.width, canvas.height);
+  pdf.save(name + '.pdf');
+  toast('✦ PDF exported');
+}
+
+/* ── SHOP PRESETS ── */
+var SHOP_PRESETS = {
+  default:   { bleed: 14, safeMargin: 20 },
+  vinylShop: { bleed: 20, safeMargin: 30 },
+  dtgShop:   { bleed: 8,  safeMargin: 15 },
+};
+
+function applyShopPreset(name) {
+  var p = SHOP_PRESETS[name];
+  if (!p) return;
+  STATE.safeMargin = p.safeMargin;
+  // Re-run contour cut with new bleed baked into applyContourCut's BLEED var
+  window._presetBleed = p.bleed;
+  applyContourCut();
+  toast('✦ Preset: ' + name);
+}
 
 function importJSON(e) {
   var file = e.target.files[0];
