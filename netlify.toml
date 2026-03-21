@@ -34,3 +34,8 @@
   from   = "/success"
   to     = "/.netlify/functions/order-success"
   status = 200
+
+[[redirects]]
+  from   = "/logo-studio"
+  to     = "/logo-studio/index.html"
+  status = 200
