@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
+<script>window._ppBootStart = Date.now();</script>
 <title>PrintPath Design Studio — Built for Print Shops</title>
 <meta name="description" content="Design tool built for print shops. 300 DPI Locked. Shirt Safe Area. Print Ready guaranteed."/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
@@ -37,6 +38,15 @@ body { background: #000; }
   100% { opacity: 0; }
 }
 </style>
+<script>
+// Hide editor immediately — before Fabric.js or app.js load
+document.addEventListener('DOMContentLoaded', function() {
+  var main = document.querySelector('main.studio-layout');
+  var hdr  = document.querySelector('header.pp-header');
+  if (main) main.style.visibility = 'hidden';
+  if (hdr)  hdr.style.visibility  = 'hidden';
+});
+</script>
 </head>
 <body>
 
@@ -416,7 +426,11 @@ body { background: #000; }
 <script src="app.js"></script>
 <script>
 (function() {
-  // Soft tick on logo appear
+  var BOOT_MS = 1400;
+  var elapsed = Date.now() - window._ppBootStart;
+  var remaining = Math.max(0, BOOT_MS - elapsed);
+
+  // Soft tick
   try {
     var ctx = new (window.AudioContext || window.webkitAudioContext)();
     var buf = ctx.createBuffer(1, ctx.sampleRate * 0.12, ctx.sampleRate);
@@ -435,17 +449,14 @@ body { background: #000; }
     src.start(ctx.currentTime);
   } catch(e) {}
 
-  var boot = document.getElementById('pp-boot');
-  if (!boot) return;
-  var main = document.querySelector('main.studio-layout');
-  var hdr  = document.querySelector('header.pp-header');
-  if (main) main.style.visibility = 'hidden';
-  if (hdr)  hdr.style.visibility  = 'hidden';
   setTimeout(function() {
-    boot.remove();
+    var boot = document.getElementById('pp-boot');
+    if (boot) boot.remove();
+    var main = document.querySelector('main.studio-layout');
+    var hdr  = document.querySelector('header.pp-header');
     if (main) main.style.visibility = '';
     if (hdr)  hdr.style.visibility  = '';
-  }, 1400);
+  }, remaining);
 })();
 </script>
 </body>
