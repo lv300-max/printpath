@@ -1555,7 +1555,8 @@
       <li>✔ Unlimited Exports</li>
     </ul>
     <div class="pp-up-price"><span class="pp-up-amount">$29</span><span class="pp-up-per">/month</span></div>
-    <button onclick="upgradeToPro()" class="pp-up-btn">Upgrade Now — $29/mo</button>
+    <div class="pp-proof">Most users unlock Pro to finish their design</div>
+    <button onclick="upgradeToPro()" class="pp-up-btn">Unlock Pro — $29/mo</button>
     <button onclick="closeUpgrade()" class="pp-up-close">Not now</button>
     <div class="pp-up-trust">
       <span>Used by print shops</span><span class="pp-up-dot">·</span>
@@ -1578,7 +1579,7 @@
     modal.classList.remove('hidden');
     if (featureName) {
       var sub = modal.querySelector('.pp-up-sub');
-      if (sub) sub.textContent = '\u201c' + featureName + '\u201d requires Pro. Upgrade to continue.';
+      if (sub) sub.textContent = '\u201c' + featureName + '\u201d requires Pro. Unlock to continue.';
     }
   }
   function closeUpgrade() {
@@ -1593,7 +1594,7 @@
       var data = await res.json();
       if (data.url) { window.location = data.url; return; }
     } catch(e) {}
-    if (btn) { btn.textContent = 'Upgrade Now \u2014 $29/mo'; btn.disabled = false; }
+    if (btn) { btn.textContent = 'Unlock Pro \u2014 $29/mo'; btn.disabled = false; }
   }
   (function() {
     var p = new URLSearchParams(window.location.search);

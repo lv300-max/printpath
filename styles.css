@@ -6409,3 +6409,24 @@ footer {
 }
 
 .pp-up-dot { opacity: 0.5; }
+
+/* ── SOCIAL PROOF LINE ── */
+.pp-proof {
+  font-size: 10px;
+  text-align: center;
+  letter-spacing: 0.04em;
+  opacity: 0.6;
+  margin-bottom: 10px;
+  font-style: italic;
+}
+
+/* ── PRO GLOW PULSE ── */
+.pro-glow {
+  animation: glowPulse 2.5s infinite;
+}
+
+@keyframes glowPulse {
+  0%   { box-shadow: 0 0 0px rgba(0, 255, 156, 0); }
+  50%  { box-shadow: 0 0 10px rgba(0, 255, 156, 0.55); }
+  100% { box-shadow: 0 0 0px rgba(0, 255, 156, 0); }
+}

@@ -147,6 +147,7 @@
       <span id="obj-rot">R: 0°</span>
       <span id="canvas-size-label">1000 × 1000 px</span>
     </div>
+    <div class="pp-hint">Designs like this are usually printed at 300 DPI — yours is locked in ✦</div>
   </section>
 
   <!-- RIGHT SIDEBAR -->
@@ -160,6 +161,10 @@
         <div class="tf-field"><label>W</label><input type="number" id="tf-w" onchange="applyTransform('w',this.value)"/></div>
         <div class="tf-field"><label>H</label><input type="number" id="tf-h" onchange="applyTransform('h',this.value)"/></div>
         <div class="tf-field tf-wide"><label>Rotation °</label><input type="number" id="tf-r" min="0" max="360" onchange="applyTransform('r',this.value)"/></div>
+      </div>
+      <div class="locked-tools-row">
+        <button class="tool-locked" onclick="requirePro('Resize &amp; Scale')" title="Resize for perfect print alignment (Pro)">⇲ Resize &amp; Scale</button>
+        <button class="tool-locked" onclick="requirePro('Align to Canvas')" title="Auto-align to print safe area (Pro)">⊞ Align to Canvas</button>
       </div>
     </div>
 
@@ -238,8 +243,17 @@
       </div>
     </div>
 
+    <div class="sidebar-section pp-locked-section">
+      <div class="sidebar-label">PRO TOOLS</div>
+      <div class="locked-tools-col">
+        <button class="tool-locked pro-glow" onclick="requirePro('Color Adjust')" title="Advanced CMYK color controls (Pro)">🎨 Color Adjust</button>
+        <button class="tool-locked" onclick="requirePro('Background Remove')" title="Remove background for clean print cutouts (Pro)">✂ Background Remove</button>
+      </div>
+    </div>
+
     <div class="sidebar-section">
       <div class="sidebar-label">DIE CUT <span class="mode-indicator" id="diecut-mode-label">— Logo</span></div>
+      <!-- locked tool row injected above die-cut -->
       <div class="diecut-controls">
         <label class="pp-label">Cut Shape</label>
         <select id="cut-shape" onchange="applyDieCut()" class="pp-select">
@@ -299,7 +313,8 @@
           <input type="checkbox" id="export-diecut"/>
           <span>Include die-cut line</span>
         </label>
-        <button class="pp-btn" id="export-btn" onclick="exportDesign()">✦ Use This Design</button>
+        <div class="pp-proof">Most users unlock Pro to finish their design</div>
+        <button class="pp-btn pro-glow" id="export-btn" onclick="exportDesign()">✦ Use This Design</button>
         <div class="export-print-labels">
           <span class="print-label-tag">Print Ready</span>
           <span class="print-label-tag">300 DPI Locked</span>
@@ -347,7 +362,7 @@
       <span class="pp-up-per">/month</span>
     </div>
 
-    <button onclick="upgradeToPro()" class="pp-up-btn">Upgrade Now — $29/mo</button>
+    <button onclick="upgradeToPro()" class="pp-up-btn">Unlock Pro — $29/mo</button>
     <button onclick="closeUpgrade()" class="pp-up-close">Not now</button>
 
     <div class="pp-up-trust">

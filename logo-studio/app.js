@@ -706,7 +706,7 @@ function showUpgradeModal(featureName) {
   // Highlight which feature they tried to use
   if (featureName) {
     var sub = modal.querySelector('.pp-up-sub');
-    if (sub) sub.textContent = '\u201c' + featureName + '\u201d requires Pro. Upgrade to continue.';
+    if (sub) sub.textContent = '\u201c' + featureName + '\u201d requires Pro. Unlock to continue.';
   }
 }
 
@@ -725,11 +725,11 @@ async function upgradeToPro() {
       window.location = data.url;
     } else {
       toast('\u26a0 Could not start checkout \u2014 try again');
-      if (btn) { btn.textContent = 'Upgrade Now \u2014 $29/mo'; btn.disabled = false; }
+      if (btn) { btn.textContent = 'Unlock Pro \u2014 $29/mo'; btn.disabled = false; }
     }
   } catch(e) {
     toast('\u26a0 Network error \u2014 try again');
-    if (btn) { btn.textContent = 'Upgrade Now \u2014 $29/mo'; btn.disabled = false; }
+    if (btn) { btn.textContent = 'Unlock Pro \u2014 $29/mo'; btn.disabled = false; }
   }
 }
 
