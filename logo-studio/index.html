@@ -18,6 +18,7 @@
   z-index: 99999;
   pointer-events: none;
 }
+body { background: #000; }
 #pp-boot .pp-boot-logo {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 12vw;
@@ -436,8 +437,14 @@
 
   var boot = document.getElementById('pp-boot');
   if (!boot) return;
+  var main = document.querySelector('main.studio-layout');
+  var hdr  = document.querySelector('header.pp-header');
+  if (main) main.style.visibility = 'hidden';
+  if (hdr)  hdr.style.visibility  = 'hidden';
   setTimeout(function() {
     boot.remove();
+    if (main) main.style.visibility = '';
+    if (hdr)  hdr.style.visibility  = '';
   }, 1400);
 })();
 </script>
