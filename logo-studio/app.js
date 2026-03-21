@@ -567,92 +567,91 @@ function exportDesign() {
 
 /* ── FINISH WITH PRINTPATH ── */
 /* Fast print-ready pass: centers, snaps to safe alignment,
-   normalises scale, bumps canvas to 300-DPI minimum.
+   normalises placement, bumps canvas to safe print base.
    No AI, no randomness — deterministic print prep. */
 function fastFinish() {
   var btn = document.getElementById('fast-finish-btn');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Optimising…'; }
 
-  // 1. Ensure canvas is at a print-quality size (≥ 1200 px on each axis)
-  var MIN_PX = 1200; // internal quality target
-  if (STATE.artboardW < MIN_PX || STATE.artboardH < MIN_PX) {
-    var scale = Math.ceil(MIN_PX / Math.min(STATE.artboardW, STATE.artboardH));
-    var newW = STATE.artboardW * scale;
-    var newH = STATE.artboardH * scale;
-    // Scale all objects proportionally
-    canvas.getObjects().forEach(function(obj) {
-      obj.set({
-        left:   obj.left   * scale,
-        top:    obj.top    * scale,
-        scaleX: (obj.scaleX || 1) * scale,
-        scaleY: (obj.scaleY || 1) * scale,
-      });
-      obj.setCoords();
-    });
-    STATE.artboardW = newW;
-    STATE.artboardH = newH;
-    canvas.setWidth(newW);
-    canvas.setHeight(newH);
-    // Sync UI fields
-    var wInput = document.getElementById('artboard-w');
-    var hInput = document.getElementById('artboard-h');
-    if (wInput) wInput.value = newW;
-    if (hInput) hInput.value = newH;
-  }
-
-  // 2. Find the collective bounding box of all non-watermark objects
-  var objs = canvas.getObjects().filter(function(o) {
-    return o.id !== 'pp-watermark' && o.visible !== false;
-  });
-  if (objs.length === 0) {
-    _fastFinishDone(btn);
+  // Guard: nothing to work with
+  if (!canvas.getObjects().length) {
+    toast('Add something first');
     return;
   }
 
-  // 3. Group-select to get collective bounds, then center on artboard
-  var sel = new fabric.ActiveSelection(objs, { canvas: canvas });
-  canvas.setActiveObject(sel);
-  var cW = STATE.artboardW;
-  var cH = STATE.artboardH;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Optimising…'; }
 
-  // Center
-  sel.set({
-    left: cW / 2,
-    top:  cH / 2,
-    originX: 'center',
-    originY: 'center',
-  });
+  try {
+    var MIN_PX = 2400; // safer print base
+    var SAFE_PADDING = 0.9; // 90% of safe area — prevents over-shrink
 
-  // 4. Scale down if artwork bleeds outside safe area (with margin)
-  var margin = STATE.safeMargin || 20;
-  var maxW = cW - margin * 2;
-  var maxH = cH - margin * 2;
-  var bw = sel.getScaledWidth();
-  var bh = sel.getScaledHeight();
-  if (bw > maxW || bh > maxH) {
-    var fitScale = Math.min(maxW / bw, maxH / bh);
-    sel.set({ scaleX: (sel.scaleX || 1) * fitScale, scaleY: (sel.scaleY || 1) * fitScale });
-    // Re-center after scale
-    sel.set({ left: cW / 2, top: cH / 2 });
-  }
+    // 1. Bump canvas to print-quality size if needed
+    if (STATE.artboardW < MIN_PX || STATE.artboardH < MIN_PX) {
+      var scale = Math.ceil(MIN_PX / Math.min(STATE.artboardW, STATE.artboardH));
+      var newW = STATE.artboardW * scale;
+      var newH = STATE.artboardH * scale;
+      canvas.getObjects().forEach(function(obj) {
+        obj.set({
+          left:   obj.left   * scale,
+          top:    obj.top    * scale,
+          scaleX: (obj.scaleX || 1) * scale,
+          scaleY: (obj.scaleY || 1) * scale,
+        });
+        obj.setCoords();
+      });
+      STATE.artboardW = newW;
+      STATE.artboardH = newH;
+      canvas.setWidth(newW);
+      canvas.setHeight(newH);
+      var wInput = document.getElementById('artboard-w');
+      var hInput = document.getElementById('artboard-h');
+      if (wInput) wInput.value = newW;
+      if (hInput) hInput.value = newH;
+    }
 
-  sel.setCoords();
-  canvas.discardActiveObject();
-
-  // 5. Snap each object's coords to integer pixel grid
-  canvas.getObjects().forEach(function(obj) {
-    obj.set({
-      left: Math.round(obj.left),
-      top:  Math.round(obj.top),
+    // 2. Collect visible, non-guide objects only
+    var objs = canvas.getObjects().filter(function(o) {
+      return o.visible && o.id !== 'pp-watermark' && o._type !== 'guide';
     });
-    obj.setCoords();
-  });
+    if (!objs.length) { _fastFinishDone(btn); return; }
 
-  canvas.renderAll();
-  renderLayers();
-  calcDPI();
+    // 3. Center collective bounding box on artboard
+    var sel = new fabric.ActiveSelection(objs, { canvas: canvas });
+    canvas.setActiveObject(sel);
+    var cW = STATE.artboardW;
+    var cH = STATE.artboardH;
+    sel.set({ left: cW / 2, top: cH / 2, originX: 'center', originY: 'center' });
 
-  _fastFinishDone(btn);
+    // 4. Scale down if bleeding outside safe area, with padding buffer
+    var margin = STATE.safeMargin || 20;
+    var maxW = (cW - margin * 2) * SAFE_PADDING;
+    var maxH = (cH - margin * 2) * SAFE_PADDING;
+    var bw = sel.getScaledWidth();
+    var bh = sel.getScaledHeight();
+    if (bw > maxW || bh > maxH) {
+      var fitScale = Math.min(maxW / bw, maxH / bh);
+      sel.set({ scaleX: (sel.scaleX || 1) * fitScale, scaleY: (sel.scaleY || 1) * fitScale });
+      sel.set({ left: cW / 2, top: cH / 2 }); // re-center after scale
+    }
+
+    sel.setCoords();
+    canvas.discardActiveObject();
+
+    // 5. Snap position only (not scale) to integer pixel grid
+    canvas.getObjects().forEach(function(obj) {
+      obj.left = Math.round(obj.left);
+      obj.top  = Math.round(obj.top);
+      obj.setCoords();
+    });
+
+    canvas.renderAll();
+    renderLayers();
+    calcDPI();
+
+    _fastFinishDone(btn);
+  } catch(e) {
+    console.warn('[PrintPath] fastFinish error:', e);
+    if (btn) { btn.disabled = false; btn.textContent = '✦ Finish with PrintPath'; }
+  }
 }
 
 function _fastFinishDone(btn) {
