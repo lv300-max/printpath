@@ -93,6 +93,20 @@ window.addEventListener('load', function() {
     }
   });
 
+  // Dev mode: ?dev=true or window.PP_DEV=true reveals sidebars
+  var devMode = window.PP_DEV || new URLSearchParams(location.search).get('dev') === 'true';
+  if (devMode) {
+    document.querySelector('.studio-layout').classList.remove('pp-focus-mode');
+    document.body.classList.add('pp-dev');
+  }
+
+  // Sync Panels button label to initial state
+  var sidebarBtn = document.getElementById('sidebar-toggle');
+  if (sidebarBtn) {
+    var hidden = document.querySelector('.studio-layout').classList.contains('pp-focus-mode');
+    sidebarBtn.textContent = hidden ? '\u25a1 Panels' : '\u25a3 Panels';
+  }
+
   // Start in sticker mode — black canvas, contour cut ready
   setMode('sticker');
   canvas.setOverlayColor('rgba(255,255,255,0.03)', canvas.renderAll.bind(canvas));
@@ -1178,9 +1192,10 @@ function toggleSidebars() {
   var layout = document.querySelector('.studio-layout');
   var btn    = document.getElementById('sidebar-toggle');
   if (!layout) return;
-  layout.classList.toggle('pp-focus-mode');
-  var hidden = layout.classList.contains('pp-focus-mode');
-  if (btn) btn.textContent = hidden ? '□ Panels' : '▣ Panels';
+  // pp-dev-visible = sidebars shown; default = hidden
+  layout.classList.toggle('pp-dev-visible');
+  var visible = layout.classList.contains('pp-dev-visible');
+  if (btn) btn.textContent = visible ? '\u25a3 Panels' : '\u25a1 Panels';
 }
 
 /* ── RUN FAST PATH ── */

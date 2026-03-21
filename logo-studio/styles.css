@@ -198,6 +198,31 @@ html, body {
   overflow: hidden;
 }
 
+/* Default: sidebars hidden (focus mode on) — use ?dev=true or PP_DEV to restore */
+.studio-layout:not(.pp-dev-visible) .sidebar {
+  width: 0;
+  padding: 0;
+  overflow: hidden;
+  border: none;
+}
+.studio-layout:not(.pp-dev-visible) {
+  grid-template-columns: 0 1fr 0;
+}
+
+/* Dev mode: body.pp-dev unlocks sidebars */
+body.pp-dev .studio-layout .sidebar,
+.studio-layout.pp-dev-visible .sidebar {
+  width: var(--sidebar-w);
+  padding: 10px 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-right: 1px solid var(--border-soft);
+}
+body.pp-dev .studio-layout,
+.studio-layout.pp-dev-visible {
+  grid-template-columns: var(--sidebar-w) 1fr var(--sidebar-w);
+}
+
 /* ── SIDEBARS ── */
 .sidebar {
   background: var(--bg-panel);
