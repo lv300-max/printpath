@@ -918,6 +918,13 @@ h3 { font-size: clamp(1.15rem, 2vw, 1.5rem); letter-spacing: -0.02em; }
   letter-spacing: 0.03em;
 }
 
+.hero-trust-line {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  margin-top: 0.5rem;
+}
+
 /* Scroll-reveal for sections — refined native feel */
 .how-section,
 .diff-section,
@@ -5170,6 +5177,19 @@ footer {
   align-items: start;
   max-width: 900px;
   margin: 0 auto;
+}
+
+.pricing-grid--2col {
+  grid-template-columns: repeat(2, 1fr);
+  max-width: 660px;
+}
+
+.pricing-trust {
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  margin-top: 1.5rem;
 }
 
 /* Cards */

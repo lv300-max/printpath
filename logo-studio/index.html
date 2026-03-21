@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>PrintPath Logo Studio</title>
-<meta name="description" content="Professional print-ready logo creator. 300 DPI guaranteed."/>
+<title>PrintPath Design Studio — Built for Print Shops</title>
+<meta name="description" content="Design tool built for print shops. 300 DPI Locked. Shirt Safe Area. Print Ready guaranteed."/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
 <link rel="stylesheet" href="styles.css"/>
 </head>
@@ -15,7 +15,7 @@
     <div class="pp-logo-mark">⬡</div>
     <div class="pp-brand-text">
       <span class="pp-name">PRINTPATH</span>
-      <span class="pp-tag">Logo Studio</span>
+      <span class="pp-tag">Design Studio</span>
     </div>
   </div>
   <div class="pp-header-center">
@@ -25,6 +25,7 @@
     </div>
   </div>
   <div class="pp-header-right">
+    <span class="header-trust">Print-ready output guaranteed</span>
     <div id="dpi-badge" class="dpi-badge checking">— DPI</div>
     <button class="pp-btn-ghost" onclick="saveProject()">💾 Save</button>
     <button class="pp-btn-ghost" onclick="loadProject()">📂 Load</button>
@@ -38,7 +39,7 @@
   <aside class="sidebar sidebar-left">
 
     <div class="sidebar-section">
-      <div class="sidebar-label">ARTBOARD</div>
+      <div class="sidebar-label">ARTBOARD — SHIRT SAFE AREA</div>
       <div class="artboard-presets">
         <button class="preset-btn active" onclick="setArtboard(1000,1000)" data-size="1000">1000²</button>
         <button class="preset-btn"        onclick="setArtboard(1500,1500)" data-size="1500">1500²</button>
@@ -115,12 +116,13 @@
       </label>
       <label class="canvas-toggle">
         <input type="checkbox" id="show-safearea" checked onchange="toggleSafeArea()"/>
-        <span>Safe Area</span>
+        <span>Shirt Safe Area</span>
       </label>
       <label class="canvas-toggle">
         <input type="checkbox" id="snap-enabled" checked/>
         <span>Snap</span>
       </label>
+      <span class="canvas-print-badge">300 DPI Locked</span>
       <div class="zoom-controls">
         <button class="zoom-btn" onclick="zoomOut()">−</button>
         <span id="zoom-label">100%</span>
@@ -262,7 +264,7 @@
     </div>
 
     <div class="sidebar-section">
-      <div class="sidebar-label">PRINT SAFETY</div>
+      <div class="sidebar-label">PRINT SAFETY — 300 DPI CHECK</div>
       <div class="print-controls">
         <label class="pp-label">Output Size (inches)</label>
         <div class="inches-row">
@@ -285,9 +287,9 @@
     </div>
 
     <div class="sidebar-section">
-      <div class="sidebar-label">EXPORT</div>
+      <div class="sidebar-label">USE THIS DESIGN</div>
       <div class="export-controls">
-        <input type="text" id="export-name" class="pp-input" placeholder="filename" value="my-logo"/>
+        <input type="text" id="export-name" class="pp-input" placeholder="filename" value="my-design"/>
         <div class="export-format-row">
           <label class="format-opt"><input type="radio" name="export-fmt" value="png" checked/> PNG</label>
           <label class="format-opt"><input type="radio" name="export-fmt" value="transparent"/> Transparent</label>
@@ -297,13 +299,17 @@
           <input type="checkbox" id="export-diecut"/>
           <span>Include die-cut line</span>
         </label>
-        <button class="pp-btn" id="export-btn" onclick="exportDesign()">⬇ Export Print-Ready</button>
+        <button class="pp-btn" id="export-btn" onclick="exportDesign()">✦ Use This Design</button>
+        <div class="export-print-labels">
+          <span class="print-label-tag">Print Ready</span>
+          <span class="print-label-tag">300 DPI Locked</span>
+        </div>
         <div class="export-blocked" id="export-blocked" style="display:none">
           ⚠ DPI too low — increase canvas size or reduce output inches
         </div>
         <div class="export-divider"></div>
-        <button class="pp-btn-ghost" onclick="exportJSON()">📋 Export Project</button>
-        <button class="pp-btn-ghost" onclick="importJSONClick()">📂 Import Project</button>
+        <button class="pp-btn-ghost" onclick="exportJSON()">📋 Save Project</button>
+        <button class="pp-btn-ghost" onclick="importJSONClick()">📂 Load Project</button>
         <input type="file" id="import-json-input" accept=".json" style="display:none" onchange="importJSON(event)"/>
       </div>
     </div>
