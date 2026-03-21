@@ -1100,35 +1100,42 @@ function exportDesign() {
     canvas.renderAll();
   }
 
-  // Add subtle PrintPath watermark logo to export (bottom-right, small)
-  var logoMark = null;
-  fabric.Image.fromURL('/printpath_logo.png', function(img) {
-    var targetSize = Math.round(STATE.artboardW * 0.055); // ~5.5% of canvas width
-    var scale = targetSize / img.width;
-    img.set({
-      left:  STATE.artboardW - targetSize - 10,
-      top:   STATE.artboardH - targetSize - 10,
-      scaleX: scale,
-      scaleY: scale,
-      opacity: 0.18,
-      selectable: false,
-      evented:    false,
-      excludeFromExport: false
-    });
-    logoMark = img;
-    canvas.add(logoMark);
-    canvas.renderAll();
+  // Get the Fabric canvas dataURL first (no logo added to live canvas)
+  var dataURL = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 1 });
 
-    var dataURL = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 1 });
+  if (dcOverlay) canvas.remove(dcOverlay);
+  canvas.backgroundColor = origBg;
+  canvas.renderAll();
 
-    if (logoMark) canvas.remove(logoMark);
-    if (dcOverlay) canvas.remove(dcOverlay);
-    canvas.backgroundColor = origBg;
-    canvas.renderAll();
-
+  // Composite subtle PrintPath watermark onto an offscreen canvas — never touches Fabric
+  var brandImg = new Image();
+  brandImg.crossOrigin = 'anonymous';
+  brandImg.onload = function() {
+    var offscreen = document.createElement('canvas');
+    offscreen.width  = STATE.artboardW;
+    offscreen.height = STATE.artboardH;
+    var ctx2 = offscreen.getContext('2d');
+    var base = new Image();
+    base.onload = function() {
+      ctx2.drawImage(base, 0, 0);
+      var targetSize = Math.round(STATE.artboardW * 0.055);
+      var scale = targetSize / brandImg.naturalWidth;
+      var bw = brandImg.naturalWidth  * scale;
+      var bh = brandImg.naturalHeight * scale;
+      ctx2.globalAlpha = 0.18;
+      ctx2.drawImage(brandImg, STATE.artboardW - bw - 10, STATE.artboardH - bh - 10, bw, bh);
+      ctx2.globalAlpha = 1;
+      downloadDataURL(offscreen.toDataURL('image/png'), name + '.png');
+      toast('✦ ' + STATE.artboardW + '\xd7' + STATE.artboardH + 'px \u2014 ' + STATE.dpi + ' DPI');
+    };
+    base.src = dataURL;
+  };
+  brandImg.onerror = function() {
+    // logo failed to load — export without watermark
     downloadDataURL(dataURL, name + '.png');
     toast('✦ ' + STATE.artboardW + '\xd7' + STATE.artboardH + 'px \u2014 ' + STATE.dpi + ' DPI');
-  }, { crossOrigin: 'anonymous' });
+  };
+  brandImg.src = '/printpath_logo.png';
 }
 
 /* ── FINISH WITH PRINTPATH ── */
