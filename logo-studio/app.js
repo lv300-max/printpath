@@ -1,5 +1,5 @@
 var STATE = {
-  mode: 'logo',
+  mode: 'sticker',
   artboardW: 1000,
   artboardH: 1000,
   zoom: 1,
@@ -27,7 +27,7 @@ window.addEventListener('load', function() {
   canvas = new fabric.Canvas('logo-canvas', {
     width: STATE.artboardW,
     height: STATE.artboardH,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#000000',
     preserveObjectStacking: true,
     selection: true,
   });
@@ -40,14 +40,18 @@ window.addEventListener('load', function() {
   canvas.on('selection:created', onSelect);
   canvas.on('selection:updated', onSelect);
   canvas.on('selection:cleared', onDeselect);
-  canvas.on('object:modified', function() { renderLayers(); updateTransformFields(); });
+  canvas.on('object:modified', function() { renderLayers(); updateTransformFields(); applyContourCut(); });
   canvas.on('object:moving', onObjectMoving);
-  canvas.on('object:added', renderLayers);
-  canvas.on('object:removed', renderLayers);
+  canvas.on('object:added', function() { renderLayers(); applyContourCut(); });
+  canvas.on('object:removed', function() { renderLayers(); applyContourCut(); });
 
   document.addEventListener('keydown', handleKey);
   document.getElementById('img-upload').addEventListener('change', handleImageUpload);
   window.addEventListener('resize', fitCanvasToWindow);
+
+  // Start in sticker mode — black canvas, contour cut ready
+  setMode('sticker');
+  canvas.setOverlayColor('rgba(255,255,255,0.03)', canvas.renderAll.bind(canvas));
 
   var saved = localStorage.getItem('pp_logo_project');
   if (saved) {
@@ -118,15 +122,18 @@ function setMode(mode) {
   var label = document.getElementById('diecut-mode-label');
   if (mode === 'sticker') {
     label.textContent = '— Sticker';
-    canvas.backgroundColor = null;
+    canvas.setBackgroundColor('#000000', canvas.renderAll.bind(canvas));
     document.getElementById('cut-shape').value = 'contour';
     applyDieCut();
+    setTimeout(applyContourCut, 100);
     toast('✦ Sticker Mode — transparent bg, contour cut on');
   } else {
     label.textContent = '— Logo';
-    canvas.backgroundColor = '#ffffff';
+    canvas.setBackgroundColor('#ffffff', canvas.renderAll.bind(canvas));
     document.getElementById('cut-shape').value = 'none';
     applyDieCut();
+    // Remove any sticker cut line
+    canvas.getObjects().filter(function(o) { return o.ppDieCut; }).forEach(function(o) { canvas.remove(o); });
     toast('✦ Logo Mode');
   }
   canvas.renderAll();
@@ -467,6 +474,108 @@ function onObjectMoving(e) {
 }
 
 /* ── DIE CUT ── */
+/* ── CONTOUR DIE CUT ── */
+/* Traces visible object bounds, builds convex hull, draws cyan cut line.
+   No AI, no randomness — deterministic shape from pixel alpha. */
+function applyContourCut() {
+  if (STATE.mode !== 'sticker') return;
+
+  // Remove old cut line
+  var existing = canvas.getObjects().filter(function(o) { return o.ppDieCut; });
+  existing.forEach(function(o) { canvas.remove(o); });
+
+  var objects = canvas.getObjects().filter(function(o) { return o.visible && !o.ppDieCut; });
+  if (!objects.length) return;
+
+  // Merge to temp canvas for pixel sampling
+  var tempEl = document.createElement('canvas');
+  var ctx    = tempEl.getContext('2d');
+
+  var bounds = objects.reduce(function(acc, obj) {
+    var b = obj.getBoundingRect();
+    return {
+      left:   Math.min(acc.left,   b.left),
+      top:    Math.min(acc.top,    b.top),
+      right:  Math.max(acc.right,  b.left + b.width),
+      bottom: Math.max(acc.bottom, b.top  + b.height),
+    };
+  }, { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity });
+
+  var w = Math.ceil(bounds.right  - bounds.left) || 1;
+  var h = Math.ceil(bounds.bottom - bounds.top)  || 1;
+  tempEl.width  = w;
+  tempEl.height = h;
+
+  objects.forEach(function(obj) {
+    obj.clone(function(clone) {
+      clone.set({ left: (obj.left - bounds.left), top: (obj.top - bounds.top) });
+      clone.render(ctx);
+    });
+  });
+
+  // Sample alpha every 3px for speed
+  var imageData = ctx.getImageData(0, 0, w, h);
+  var pixels    = imageData.data;
+  var pts = [];
+  for (var y = 0; y < h; y += 3) {
+    for (var x = 0; x < w; x += 3) {
+      if (pixels[(y * w + x) * 4 + 3] > 20) {
+        pts.push({ x: x, y: y });
+      }
+    }
+  }
+  if (!pts.length) return;
+
+  // Convex hull
+  pts.sort(function(a, b) { return a.x === b.x ? a.y - b.y : a.x - b.x; });
+  function cross(o, a, b) { return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x); }
+  var lower = [], upper = [];
+  pts.forEach(function(p) {
+    while (lower.length >= 2 && cross(lower[lower.length-2], lower[lower.length-1], p) <= 0) lower.pop();
+    lower.push(p);
+  });
+  for (var i = pts.length - 1; i >= 0; i--) {
+    var p = pts[i];
+    while (upper.length >= 2 && cross(upper[upper.length-2], upper[upper.length-1], p) <= 0) upper.pop();
+    upper.push(p);
+  }
+  upper.pop(); lower.pop();
+  var hull = lower.concat(upper);
+
+  // Offset hull points outward by bleed padding
+  var BLEED = 14;
+  var cx = hull.reduce(function(s, p) { return s + p.x; }, 0) / hull.length;
+  var cy = hull.reduce(function(s, p) { return s + p.y; }, 0) / hull.length;
+  var expanded = hull.map(function(p) {
+    var dx = p.x - cx, dy = p.y - cy;
+    var len = Math.sqrt(dx*dx + dy*dy) || 1;
+    return {
+      x: p.x + bounds.left + (dx / len) * BLEED,
+      y: p.y + bounds.top  + (dy / len) * BLEED,
+    };
+  });
+
+  // Build SVG path
+  var d = 'M ' + expanded[0].x + ' ' + expanded[0].y;
+  for (var j = 1; j < expanded.length; j++) {
+    d += ' L ' + expanded[j].x + ' ' + expanded[j].y;
+  }
+  d += ' Z';
+
+  var outline = new fabric.Path(d, {
+    fill:        'transparent',
+    stroke:      '#00eaff',
+    strokeWidth: 2,
+    selectable:  false,
+    evented:     false,
+    ppDieCut:    true,
+  });
+
+  canvas.add(outline);
+  outline.sendToBack();
+  canvas.renderAll();
+}
+
 function applyDieCut() {
   STATE.dieCutShape = document.getElementById('cut-shape').value;
   STATE.safeMargin  = parseInt(document.getElementById('safe-margin').value);
