@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>PrintPath Logo Studio</title>
+<meta name="description" content="Professional print-ready logo creator. 300 DPI guaranteed."/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+<link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+
+<header class="pp-header">
+  <div class="pp-brand">
+    <div class="pp-logo-mark">⬡</div>
+    <div class="pp-brand-text">
+      <span class="pp-name">PRINTPATH</span>
+      <span class="pp-tag">Logo Studio</span>
+    </div>
+  </div>
+  <div class="pp-header-center">
+    <div class="mode-tabs">
+      <button class="mode-tab active" data-mode="logo"    onclick="setMode('logo')">⬡ Logo Mode</button>
+      <button class="mode-tab"        data-mode="sticker" onclick="setMode('sticker')">✦ Sticker Mode</button>
+    </div>
+  </div>
+  <div class="pp-header-right">
+    <div id="dpi-badge" class="dpi-badge checking">— DPI</div>
+    <button class="pp-btn-ghost" onclick="saveProject()">💾 Save</button>
+    <button class="pp-btn-ghost" onclick="loadProject()">📂 Load</button>
+    <button class="pp-btn-ghost danger" onclick="resetProject()">↺ Reset</button>
+  </div>
+</header>
+
+<main class="studio-layout">
+
+  <!-- LEFT SIDEBAR -->
+  <aside class="sidebar sidebar-left">
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">ARTBOARD</div>
+      <div class="artboard-presets">
+        <button class="preset-btn active" onclick="setArtboard(1000,1000)" data-size="1000">1000²</button>
+        <button class="preset-btn"        onclick="setArtboard(1500,1500)" data-size="1500">1500²</button>
+        <button class="preset-btn"        onclick="setArtboard(3000,3000)" data-size="3000">3000²</button>
+      </div>
+      <div class="artboard-info" id="artboard-info">1000 × 1000 px</div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">LOGO ELEMENTS</div>
+      <div class="tool-grid">
+        <button class="tool-btn" onclick="addText()">
+          <span class="tool-icon">T</span><span class="tool-label">Text</span>
+        </button>
+        <button class="tool-btn" onclick="addShape('rect')">
+          <span class="tool-icon">▬</span><span class="tool-label">Rect</span>
+        </button>
+        <button class="tool-btn" onclick="addShape('circle')">
+          <span class="tool-icon">●</span><span class="tool-label">Circle</span>
+        </button>
+        <button class="tool-btn" onclick="addShape('rounded')">
+          <span class="tool-icon">▢</span><span class="tool-label">Rounded</span>
+        </button>
+        <button class="tool-btn" onclick="addShape('triangle')">
+          <span class="tool-icon">▲</span><span class="tool-label">Triangle</span>
+        </button>
+        <button class="tool-btn" onclick="addShape('star')">
+          <span class="tool-icon">★</span><span class="tool-label">Star</span>
+        </button>
+        <button class="tool-btn" onclick="addShape('hexagon')">
+          <span class="tool-icon">⬡</span><span class="tool-label">Hexagon</span>
+        </button>
+        <button class="tool-btn" onclick="triggerImageUpload()">
+          <span class="tool-icon">⊕</span><span class="tool-label">Image</span>
+        </button>
+      </div>
+      <input type="file" id="img-upload" accept="image/png,image/svg+xml,image/jpeg" style="display:none"/>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">ARRANGE</div>
+      <div class="arrange-grid">
+        <button class="arr-btn" onclick="bringToFront()">⇈ Front</button>
+        <button class="arr-btn" onclick="sendToBack()">⇊ Back</button>
+        <button class="arr-btn" onclick="bringForward()">↑ Forward</button>
+        <button class="arr-btn" onclick="sendBackward()">↓ Backward</button>
+        <button class="arr-btn" onclick="duplicateObject()">⧉ Duplicate</button>
+        <button class="arr-btn danger" onclick="deleteObject()">✕ Delete</button>
+        <button class="arr-btn" onclick="lockToggle()" id="lock-btn">🔓 Lock</button>
+        <button class="arr-btn" onclick="flipH()">↔ Flip H</button>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">ALIGN TO ARTBOARD</div>
+      <div class="align-grid">
+        <button class="align-btn" onclick="alignObj('left')"    title="Left">⇤</button>
+        <button class="align-btn" onclick="alignObj('centerH')" title="Center H">↔</button>
+        <button class="align-btn" onclick="alignObj('right')"   title="Right">⇥</button>
+        <button class="align-btn" onclick="alignObj('top')"     title="Top">⇡</button>
+        <button class="align-btn" onclick="alignObj('centerV')" title="Center V">↕</button>
+        <button class="align-btn" onclick="alignObj('bottom')"  title="Bottom">⇣</button>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- CANVAS -->
+  <section class="canvas-area">
+    <div class="canvas-toolbar">
+      <label class="canvas-toggle">
+        <input type="checkbox" id="show-guides" checked onchange="toggleGuides()"/>
+        <span>Guides</span>
+      </label>
+      <label class="canvas-toggle">
+        <input type="checkbox" id="show-safearea" checked onchange="toggleSafeArea()"/>
+        <span>Safe Area</span>
+      </label>
+      <label class="canvas-toggle">
+        <input type="checkbox" id="snap-enabled" checked/>
+        <span>Snap</span>
+      </label>
+      <div class="zoom-controls">
+        <button class="zoom-btn" onclick="zoomOut()">−</button>
+        <span id="zoom-label">100%</span>
+        <button class="zoom-btn" onclick="zoomIn()">+</button>
+        <button class="zoom-btn" onclick="zoomFit()">Fit</button>
+      </div>
+    </div>
+
+    <div class="canvas-outer" id="canvas-outer">
+      <div class="canvas-wrapper" id="canvas-wrapper">
+        <canvas id="logo-canvas"></canvas>
+        <div class="guide-h"   id="guide-h"></div>
+        <div class="guide-v"   id="guide-v"></div>
+        <div class="safe-area" id="safe-area"></div>
+        <div class="canvas-watermark">PrintPath</div>
+      </div>
+    </div>
+
+    <div class="canvas-statusbar">
+      <span id="obj-coords">X: —  Y: —</span>
+      <span id="obj-dims">W: —  H: —</span>
+      <span id="obj-rot">R: 0°</span>
+      <span id="canvas-size-label">1000 × 1000 px</span>
+    </div>
+  </section>
+
+  <!-- RIGHT SIDEBAR -->
+  <aside class="sidebar sidebar-right">
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">TRANSFORM</div>
+      <div class="transform-grid">
+        <div class="tf-field"><label>X</label><input type="number" id="tf-x" onchange="applyTransform('x',this.value)"/></div>
+        <div class="tf-field"><label>Y</label><input type="number" id="tf-y" onchange="applyTransform('y',this.value)"/></div>
+        <div class="tf-field"><label>W</label><input type="number" id="tf-w" onchange="applyTransform('w',this.value)"/></div>
+        <div class="tf-field"><label>H</label><input type="number" id="tf-h" onchange="applyTransform('h',this.value)"/></div>
+        <div class="tf-field tf-wide"><label>Rotation °</label><input type="number" id="tf-r" min="0" max="360" onchange="applyTransform('r',this.value)"/></div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">FILL &amp; STROKE</div>
+      <div class="color-row">
+        <div class="color-swatch-block">
+          <label>Fill</label>
+          <div class="swatch-preview" id="fill-preview" onclick="document.getElementById('fill-color').click()"></div>
+          <input type="color" id="fill-color" value="#000000" onchange="applyColor('fill',this.value)"/>
+          <input type="text" class="hex-input" id="fill-hex" placeholder="#000000" onchange="applyHex('fill',this.value)" maxlength="7"/>
+        </div>
+        <div class="color-swatch-block">
+          <label>Stroke</label>
+          <div class="swatch-preview" id="stroke-preview" onclick="document.getElementById('stroke-color').click()"></div>
+          <input type="color" id="stroke-color" value="#000000" onchange="applyColor('stroke',this.value)"/>
+          <input type="text" class="hex-input" id="stroke-hex" placeholder="#000000" onchange="applyHex('stroke',this.value)" maxlength="7"/>
+        </div>
+      </div>
+      <div class="slider-row">
+        <label>Stroke Width</label>
+        <input type="range" id="stroke-width" min="0" max="40" value="0" oninput="applyStrokeWidth(this.value)"/>
+        <span id="stroke-width-val">0</span>
+      </div>
+      <div class="slider-row">
+        <label>Opacity</label>
+        <input type="range" id="obj-opacity" min="0" max="100" value="100" oninput="applyOpacity(this.value)"/>
+        <span id="obj-opacity-val">100%</span>
+      </div>
+      <div class="sidebar-label" style="margin-top:8px">PRINT-SAFE PALETTE</div>
+      <div class="swatch-row" id="swatch-row"></div>
+    </div>
+
+    <div class="sidebar-section" id="text-panel" style="display:none">
+      <div class="sidebar-label">TYPOGRAPHY</div>
+      <div class="text-controls">
+        <select id="font-family" onchange="applyTextProp('fontFamily',this.value)" class="pp-select">
+          <option value="Impact">Impact</option>
+          <option value="Arial Black">Arial Black</option>
+          <option value="Arial">Arial</option>
+          <option value="Helvetica">Helvetica</option>
+          <option value="Georgia">Georgia</option>
+          <option value="Garamond">Garamond</option>
+          <option value="Courier New">Courier New</option>
+          <option value="Verdana">Verdana</option>
+          <option value="Trebuchet MS">Trebuchet MS</option>
+        </select>
+        <div class="text-row">
+          <div class="tf-field">
+            <label>Size</label>
+            <input type="number" id="font-size" value="72" min="6" max="800" onchange="applyTextProp('fontSize',parseInt(this.value))"/>
+          </div>
+          <div class="tf-field">
+            <label>Weight</label>
+            <select id="font-weight" onchange="applyTextProp('fontWeight',this.value)" class="pp-select">
+              <option value="300">Light</option>
+              <option value="normal">Regular</option>
+              <option value="bold">Bold</option>
+              <option value="800">Heavy</option>
+            </select>
+          </div>
+        </div>
+        <div class="slider-row">
+          <label>Letter Spacing</label>
+          <input type="range" id="letter-spacing" min="-10" max="60" value="0" oninput="applyTextProp('charSpacing',parseInt(this.value)*10)"/>
+          <span id="letter-spacing-val">0</span>
+        </div>
+        <div class="slider-row">
+          <label>Line Height</label>
+          <input type="range" id="line-height" min="0.5" max="3" step="0.1" value="1.2" oninput="applyTextProp('lineHeight',parseFloat(this.value))"/>
+          <span id="line-height-val">1.2</span>
+        </div>
+        <div class="text-toggles">
+          <button class="toggle-btn" id="uppercase-btn" onclick="toggleUppercase()">AA Caps</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">DIE CUT <span class="mode-indicator" id="diecut-mode-label">— Logo</span></div>
+      <div class="diecut-controls">
+        <label class="pp-label">Cut Shape</label>
+        <select id="cut-shape" onchange="applyDieCut()" class="pp-select">
+          <option value="none">None</option>
+          <option value="contour">Contour Cut</option>
+          <option value="circle">Circle Cut</option>
+          <option value="square">Square Cut</option>
+          <option value="rounded">Rounded Square</option>
+        </select>
+        <div class="slider-row">
+          <label>Safe Margin</label>
+          <input type="range" id="safe-margin" min="0" max="80" value="20" oninput="applyDieCut()"/>
+          <span id="safe-margin-val">20px</span>
+        </div>
+        <div class="slider-row">
+          <label>Bleed</label>
+          <input type="range" id="bleed-size" min="0" max="40" value="10" oninput="applyDieCut()"/>
+          <span id="bleed-val">10px</span>
+        </div>
+        <div class="diecut-preview" id="diecut-preview"><span>No cut selected</span></div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">PRINT SAFETY</div>
+      <div class="print-controls">
+        <label class="pp-label">Output Size (inches)</label>
+        <div class="inches-row">
+          <input type="number" id="inches-w" value="3" min="0.5" max="24" step="0.5" onchange="calcDPI()" class="inches-input" placeholder="W"/>
+          <span>×</span>
+          <input type="number" id="inches-h" value="3" min="0.5" max="24" step="0.5" onchange="calcDPI()" class="inches-input" placeholder="H"/>
+          <span>in</span>
+        </div>
+        <div class="dpi-display" id="dpi-display">
+          <div class="dpi-number" id="dpi-number">333</div>
+          <div class="dpi-label-text">DPI</div>
+          <div class="dpi-status" id="dpi-status">✦ Print Ready</div>
+        </div>
+        <div class="print-info">
+          <div class="print-info-row"><span>Canvas</span><span id="pi-canvas">1000 × 1000 px</span></div>
+          <div class="print-info-row"><span>Output</span><span id="pi-output">3 × 3 in</span></div>
+          <div class="print-info-row"><span>Minimum</span><span>300 DPI</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">EXPORT</div>
+      <div class="export-controls">
+        <input type="text" id="export-name" class="pp-input" placeholder="filename" value="my-logo"/>
+        <div class="export-format-row">
+          <label class="format-opt"><input type="radio" name="export-fmt" value="png" checked/> PNG</label>
+          <label class="format-opt"><input type="radio" name="export-fmt" value="transparent"/> Transparent</label>
+          <label class="format-opt"><input type="radio" name="export-fmt" value="svg"/> SVG</label>
+        </div>
+        <label class="canvas-toggle" style="font-size:11px;color:var(--text-soft)">
+          <input type="checkbox" id="export-diecut"/>
+          <span>Include die-cut line</span>
+        </label>
+        <button class="pp-btn" id="export-btn" onclick="exportDesign()">⬇ Export Print-Ready</button>
+        <div class="export-blocked" id="export-blocked" style="display:none">
+          ⚠ DPI too low — increase canvas size or reduce output inches
+        </div>
+        <div class="export-divider"></div>
+        <button class="pp-btn-ghost" onclick="exportJSON()">📋 Export Project</button>
+        <button class="pp-btn-ghost" onclick="importJSONClick()">📂 Import Project</button>
+        <input type="file" id="import-json-input" accept=".json" style="display:none" onchange="importJSON(event)"/>
+      </div>
+    </div>
+
+  </aside>
+</main>
+
+<div class="layers-drawer">
+  <div class="layers-header">
+    <span>LAYERS</span>
+    <button class="layers-toggle" onclick="toggleLayersDrawer()">▼</button>
+  </div>
+  <div class="layers-list" id="layers-list"></div>
+</div>
+
+<div class="pp-toast" id="pp-toast"></div>
+
+<script src="utils.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
