@@ -958,6 +958,14 @@ function validateForExport() {
     return { ok: false, reason: 'Canvas too small (' + STATE.artboardW + '×' + STATE.artboardH + 'px)' };
   }
 
+  // Hard-fail: source was too small for snapToDPI (set by _qualityFail flag)
+  if (!SHOP_RULES.allowLowDPI) {
+    var failedImgs = objs.filter(function(o) { return o._qualityFail; });
+    if (failedImgs.length) {
+      return { ok: false, reason: 'Source image too small for ' + SHOP_DPI + ' DPI print' };
+    }
+  }
+
   // True DPI guard — checks source resolution of every image object
   if (!SHOP_RULES.allowLowDPI) {
     var images = objs.filter(function(o) { return o.type === 'image' && o._originalWidth; });
@@ -972,7 +980,6 @@ function validateForExport() {
         return { ok: false, reason: 'DPI too low (' + Math.round(worstDPI) + ' — need ' + SHOP_RULES.minDPI + ')' };
       }
     } else if (STATE.dpi < SHOP_RULES.minDPI) {
-      // No images — fall back to display-bounds DPI
       return { ok: false, reason: 'DPI too low (' + STATE.dpi + ' — need ' + SHOP_RULES.minDPI + ')' };
     }
   }
@@ -1175,7 +1182,11 @@ function toggleSidebars() {
 }
 
 /* ── RUN FAST PATH ── */
-/* One-click: upscale all images → center + fit → cut line → DPI */
+/* Correct order: size → layout → cut → validate
+   1. snapToDPI   — scale every image to SHOP_DPI × inches
+   2. fastFinish  — center collective bounds, fit to safe area
+   3. applyContourCut — trace hull around final positioned art
+   4. calcDPI / calcTrueDPI / updateLockState — validate & gate export */
 function runFastPath() {
   if (!canvas) return;
   var btn = document.getElementById('pp-snap');
@@ -1184,14 +1195,18 @@ function runFastPath() {
     try {
       // 1. Ensure sticker mode so contour cut fires
       if (STATE.mode !== 'sticker') setMode('sticker');
-      // 2. Snap every image to shop DPI target (pixels = DPI × inches)
-      canvas.getObjects().forEach(function(o) {
-        if (o.visible && !o._isSnapLine && !o._isSafeArea && !o._isCutLine && o.type === 'image')
-          snapToDPI(o);
+
+      // 2. SIZE: snap every image to shop DPI target
+      var images = canvas.getObjects().filter(function(o) {
+        return o.visible && !o._isSnapLine && !o._isSafeArea && !o._isCutLine && o.type === 'image';
       });
-      // 3. Center, bump canvas size, fit to safe area
+      if (images.length > 1) toast('⚠ Multiple images — sizing each to ' + SHOP_DPI + ' DPI');
+      images.forEach(function(o) { snapToDPI(o); });
+
+      // 3. LAYOUT: center + fit to safe area (after size is locked)
       fastFinish();
-      // 4. Re-apply cut + DPI after fastFinish settles
+
+      // 4. CUT + VALIDATE: after fastFinish settles
       setTimeout(function() {
         applyContourCut();
         calcDPI();
