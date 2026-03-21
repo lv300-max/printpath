@@ -77,8 +77,10 @@
   animation: ppSheen 1s ease forwards 1.35s;
 }
 @keyframes ppSheen {
-  from { left: -120%; }
-  to   { left:  140%; }
+  0%   { left: -120%; opacity: 1; }
+  40%  { opacity: 0.9; }
+  50%  { opacity: 1; }
+  100% { left: 140%;  opacity: 1; }
 }
 #pp-boot .pp-boot-sub {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
