@@ -574,8 +574,7 @@ function fastFinish() {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Optimising…'; }
 
   // 1. Ensure canvas is at a print-quality size (≥ 1200 px on each axis)
-  var MIN_PX = 1200; // ~300 DPI @ 4 in — internal quality target
-  var changed = false;
+  var MIN_PX = 1200; // internal quality target
   if (STATE.artboardW < MIN_PX || STATE.artboardH < MIN_PX) {
     var scale = Math.ceil(MIN_PX / Math.min(STATE.artboardW, STATE.artboardH));
     var newW = STATE.artboardW * scale;
@@ -599,7 +598,6 @@ function fastFinish() {
     var hInput = document.getElementById('artboard-h');
     if (wInput) wInput.value = newW;
     if (hInput) hInput.value = newH;
-    changed = true;
   }
 
   // 2. Find the collective bounding box of all non-watermark objects

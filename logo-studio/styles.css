@@ -1290,14 +1290,6 @@ select.pp-select:focus { border-color: rgba(0, 255, 156, 0.4); outline: none; }
   box-shadow: none;
 }
 
-.fast-finish-sub {
-  text-align: center;
-  font-size: 9px;
-  letter-spacing: 0.06em;
-  color: var(--text-dim);
-  text-transform: uppercase;
-}
-
 /* ── SHOP TIER GRID ── */
 .shop-tier-grid {
   display: grid;
