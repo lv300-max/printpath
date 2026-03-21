@@ -111,6 +111,7 @@ function toggleSafeArea() {
 
 /* ── MODE ── */
 function setMode(mode) {
+  if (mode === 'sticker' && !requirePro('Sticker Mode')) return;
   STATE.mode = mode;
   document.querySelectorAll('.mode-tab').forEach(function(t) {
     t.classList.toggle('active', t.dataset.mode === mode);
@@ -469,6 +470,10 @@ function onObjectMoving(e) {
 /* ── DIE CUT ── */
 function applyDieCut() {
   STATE.dieCutShape = document.getElementById('cut-shape').value;
+  if (STATE.dieCutShape !== 'none' && !requirePro('Die-Cut Shape')) {
+    document.getElementById('cut-shape').value = 'none';
+    STATE.dieCutShape = 'none';
+  }
   STATE.safeMargin  = parseInt(document.getElementById('safe-margin').value);
   STATE.bleed       = parseInt(document.getElementById('bleed-size').value);
   document.getElementById('safe-margin-val').textContent = STATE.safeMargin + 'px';
@@ -520,6 +525,7 @@ function calcDPI() {
 
 /* ── EXPORT ── */
 function exportDesign() {
+  if (!requirePro('Export')) return;
   if (!STATE.printReady) { toast('⚠ Cannot export — DPI below 300'); return; }
 
   var fmt     = document.querySelector('input[name="export-fmt"]:checked').value;
@@ -678,4 +684,63 @@ function handleKey(e) {
     return;
   }
   if (e.key === 'Delete' || e.key === 'Backspace') deleteObject();
+  if (e.key === 'Escape') closeUpgrade();
 }
+
+/* ── UPGRADE MODAL ── */
+var currentUser = {
+  plan: localStorage.getItem('pp_plan') || 'free',
+};
+
+function requirePro(featureName) {
+  if (currentUser.plan === 'pro') return true;
+  toast('\u2665 Pro tool \u2014 unlock to continue');
+  setTimeout(function() { showUpgradeModal(featureName); }, 600);
+  return false;
+}
+
+function showUpgradeModal(featureName) {
+  var modal = document.getElementById('upgrade-modal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  // Highlight which feature they tried to use
+  if (featureName) {
+    var sub = modal.querySelector('.pp-up-sub');
+    if (sub) sub.textContent = '\u201c' + featureName + '\u201d requires Pro. Upgrade to continue.';
+  }
+}
+
+function closeUpgrade() {
+  var modal = document.getElementById('upgrade-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+async function upgradeToPro() {
+  var btn = document.querySelector('.pp-up-btn');
+  if (btn) { btn.textContent = 'Redirecting\u2026'; btn.disabled = true; }
+  try {
+    var res  = await fetch('/create-subscription');
+    var data = await res.json();
+    if (data.url) {
+      window.location = data.url;
+    } else {
+      toast('\u26a0 Could not start checkout \u2014 try again');
+      if (btn) { btn.textContent = 'Upgrade Now \u2014 $29/mo'; btn.disabled = false; }
+    }
+  } catch(e) {
+    toast('\u26a0 Network error \u2014 try again');
+    if (btn) { btn.textContent = 'Upgrade Now \u2014 $29/mo'; btn.disabled = false; }
+  }
+}
+
+// Check for successful upgrade return
+(function checkProReturn() {
+  var params = new URLSearchParams(window.location.search);
+  if (params.get('pro') === 'success') {
+    currentUser.plan = 'pro';
+    localStorage.setItem('pp_plan', 'pro');
+    toast('\u2726 Pro unlocked \u2014 all tools available');
+    // Clean URL
+    history.replaceState(null, '', window.location.pathname);
+  }
+})();

@@ -1541,5 +1541,69 @@
 <script src="sticker.js" defer></script>
 <script src="app.js" defer></script>
 
+<!-- Upgrade Modal -->
+<div id="upgrade-modal" class="pp-upgrade hidden" onclick="if(event.target===this)closeUpgrade()">
+  <div class="pp-upgrade-box">
+    <div class="pp-up-eyebrow">✦ PrintPath Pro</div>
+    <h2 class="pp-up-heading">Unlock Pro Tools</h2>
+    <p class="pp-up-sub">Make designs print-ready. Faster. Cleaner. Professional.</p>
+    <ul class="pp-up-features">
+      <li>✔ 300 DPI Export — every file</li>
+      <li>✔ Die-Cut Sticker Mode</li>
+      <li>✔ Advanced Color Controls</li>
+      <li>✔ Resize &amp; Scale Tools</li>
+      <li>✔ Unlimited Exports</li>
+    </ul>
+    <div class="pp-up-price"><span class="pp-up-amount">$29</span><span class="pp-up-per">/month</span></div>
+    <button onclick="upgradeToPro()" class="pp-up-btn">Upgrade Now — $29/mo</button>
+    <button onclick="closeUpgrade()" class="pp-up-close">Not now</button>
+    <div class="pp-up-trust">
+      <span>Used by print shops</span><span class="pp-up-dot">·</span>
+      <span>Print-ready output guaranteed</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  var currentUser = { plan: localStorage.getItem('pp_plan') || 'free' };
+  function requirePro(featureName) {
+    if (currentUser.plan === 'pro') return true;
+    toast && toast('\u2665 Pro tool \u2014 unlock to continue');
+    setTimeout(function() { showUpgradeModal(featureName); }, 600);
+    return false;
+  }
+  function showUpgradeModal(featureName) {
+    var modal = document.getElementById('upgrade-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    if (featureName) {
+      var sub = modal.querySelector('.pp-up-sub');
+      if (sub) sub.textContent = '\u201c' + featureName + '\u201d requires Pro. Upgrade to continue.';
+    }
+  }
+  function closeUpgrade() {
+    var modal = document.getElementById('upgrade-modal');
+    if (modal) modal.classList.add('hidden');
+  }
+  async function upgradeToPro() {
+    var btn = document.querySelector('.pp-up-btn');
+    if (btn) { btn.textContent = 'Redirecting\u2026'; btn.disabled = true; }
+    try {
+      var res  = await fetch('/create-subscription');
+      var data = await res.json();
+      if (data.url) { window.location = data.url; return; }
+    } catch(e) {}
+    if (btn) { btn.textContent = 'Upgrade Now \u2014 $29/mo'; btn.disabled = false; }
+  }
+  (function() {
+    var p = new URLSearchParams(window.location.search);
+    if (p.get('pro') === 'success') {
+      currentUser.plan = 'pro';
+      localStorage.setItem('pp_plan', 'pro');
+      history.replaceState(null, '', window.location.pathname);
+    }
+  })();
+</script>
+
 </body>
 </html>

@@ -327,6 +327,37 @@
 
 <div class="pp-toast" id="pp-toast"></div>
 
+<!-- UPGRADE MODAL -->
+<div id="upgrade-modal" class="pp-upgrade hidden" onclick="if(event.target===this)closeUpgrade()">
+  <div class="pp-upgrade-box">
+    <div class="pp-up-eyebrow">✦ PrintPath Pro</div>
+    <h2 class="pp-up-heading">Unlock Pro Tools</h2>
+    <p class="pp-up-sub">Make designs print-ready. Faster. Cleaner. Professional.</p>
+
+    <ul class="pp-up-features">
+      <li>✔ 300 DPI Export — every file</li>
+      <li>✔ Die-Cut Sticker Mode</li>
+      <li>✔ Advanced Color Controls</li>
+      <li>✔ Resize &amp; Scale Tools</li>
+      <li>✔ Unlimited Exports</li>
+    </ul>
+
+    <div class="pp-up-price">
+      <span class="pp-up-amount">$29</span>
+      <span class="pp-up-per">/month</span>
+    </div>
+
+    <button onclick="upgradeToPro()" class="pp-up-btn">Upgrade Now — $29/mo</button>
+    <button onclick="closeUpgrade()" class="pp-up-close">Not now</button>
+
+    <div class="pp-up-trust">
+      <span>Used by print shops</span>
+      <span class="pp-up-dot">·</span>
+      <span>Print-ready output guaranteed</span>
+    </div>
+  </div>
+</div>
+
 <script src="utils.js"></script>
 <script src="app.js"></script>
 </body>
