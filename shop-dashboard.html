@@ -347,11 +347,33 @@
       color: var(--accent);
     }
 
+    .orders-scroll-wrap {
+      max-height: 520px;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+
     .orders-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
       gap: 12px;
     }
+
+    .orders-show-more {
+      margin-top: 10px;
+      width: 100%;
+      padding: 9px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-hi);
+      background: transparent;
+      color: var(--text-2);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .orders-show-more:hover { color: var(--accent); border-color: rgba(0,229,160,0.4); }
 
     /* ============================================================
        ORDER CARD
@@ -365,6 +387,7 @@
       flex-direction: column;
       transition: border-color var(--t) var(--ease), transform var(--t) var(--ease), box-shadow var(--t) var(--ease);
       position: relative;
+      cursor: pointer;
     }
 
     .order-card:hover {
@@ -1304,8 +1327,10 @@
         <span class="section-badge" id="orders-badge">0 active</span>
       </div>
 
-      <div class="orders-grid" id="orders-grid">
-        <!-- Injected by JS -->
+      <div class="orders-scroll-wrap" id="orders-scroll-wrap">
+        <div class="orders-grid" id="orders-grid">
+          <!-- Injected by JS -->
+        </div>
       </div>
     </div>
 
@@ -1355,19 +1380,19 @@
             <div class="upgrade-chip-left">
               <div class="upgrade-chip-icon boost">⚡</div>
               <div>
-                <div class="upgrade-chip-name">Boost Visibility</div>
-                <div class="upgrade-chip-sub">3× more impressions</div>
+                <div class="upgrade-chip-name">Get More Customers Now</div>
+                <div class="upgrade-chip-sub">3× more orders this week</div>
               </div>
             </div>
-            <div class="upgrade-chip-cta cta-green">Boost</div>
+            <div class="upgrade-chip-cta cta-green">Activate</div>
           </div>
 
           <div class="upgrade-chip" onclick="toast('Priority queue unlocked for 24h', 'warn')">
             <div class="upgrade-chip-left">
               <div class="upgrade-chip-icon prio">🎯</div>
               <div>
-                <div class="upgrade-chip-name">Priority Orders</div>
-                <div class="upgrade-chip-sub">Front of the queue</div>
+                <div class="upgrade-chip-name">Get Orders First</div>
+                <div class="upgrade-chip-sub">Jump the queue — 24h</div>
               </div>
             </div>
             <div class="upgrade-chip-cta cta-warn">Enable</div>
@@ -1420,7 +1445,7 @@
               <rect x="3" y="11" width="18" height="11" rx="2"/>
               <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
             </svg>
-            Unlock Nearby Orders
+            See More Jobs Now
           </button>
         </div>
       </div>
@@ -1538,7 +1563,7 @@ function buildCard(order) {
     : '';
 
   return `
-  <div class="order-card" data-status="${order.status}" data-id="${order.id}" id="card-${order.id}">
+  <div class="order-card" data-status="${order.status}" data-id="${order.id}" id="card-${order.id}" onclick="acceptOrder('${order.id}')">
     <div class="order-card-top">
       <div class="sticker-preview">
         <div class="preview-placeholder">${order.emoji}</div>
@@ -1560,19 +1585,19 @@ function buildCard(order) {
       </div>
     </div>
     <div class="order-actions">
-      <button class="btn-action btn-accept" onclick="acceptOrder('${order.id}')">
+      <button class="btn-action btn-accept" onclick="event.stopPropagation(); acceptOrder('${order.id}')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="20 6 9 17 4 12"/>
         </svg>
-        Accept
+        Accept Order
       </button>
-      <button class="btn-action btn-forward" onclick="forwardOrder('${order.id}')">
+      <button class="btn-action btn-forward" onclick="event.stopPropagation(); forwardOrder('${order.id}')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="15 17 20 12 15 7"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/>
         </svg>
-        Forward
+        Forward Job
       </button>
-      <button class="btn-action btn-decline" title="Decline" onclick="declineOrder('${order.id}')">
+      <button class="btn-action btn-decline" title="Decline" onclick="event.stopPropagation(); declineOrder('${order.id}')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M18 6 6 18M6 6l12 12"/>
         </svg>
@@ -1584,10 +1609,16 @@ function buildCard(order) {
 /* ============================================================
    RENDER ORDERS GRID
 ============================================================ */
-function renderOrders() {
+const MAX_VISIBLE_ORDERS = 5;
+
+function renderOrders(showAll) {
   const grid = $('orders-grid');
   const active = state.orders.filter(o => o._state !== 'declined');
   $('orders-badge').textContent = `${active.length} active`;
+
+  // Remove any existing show-more button
+  const existingMore = document.getElementById('orders-show-more-btn');
+  if (existingMore) existingMore.remove();
 
   if (active.length === 0) {
     grid.innerHTML = `
@@ -1598,7 +1629,17 @@ function renderOrders() {
     return;
   }
 
-  grid.innerHTML = active.map(buildCard).join('');
+  const visible = showAll ? active : active.slice(0, MAX_VISIBLE_ORDERS);
+  grid.innerHTML = visible.map(buildCard).join('');
+
+  if (!showAll && active.length > MAX_VISIBLE_ORDERS) {
+    const more = document.createElement('button');
+    more.id = 'orders-show-more-btn';
+    more.className = 'orders-show-more';
+    more.textContent = `+ ${active.length - MAX_VISIBLE_ORDERS} more orders — show all`;
+    more.onclick = () => renderOrders(true);
+    $('orders-scroll-wrap').appendChild(more);
+  }
 }
 
 /* ============================================================
