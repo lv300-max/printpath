@@ -2,13 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
 <script>window._ppBootStart = Date.now();</script>
 <title>PrintPath Design Studio — Built for Print Shops</title>
 <meta name="description" content="Design tool built for print shops. 300 DPI Locked. Shirt Safe Area. Print Ready guaranteed."/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<link rel="stylesheet" href="styles.css"/>
+<!-- Non-blocking CSS: preload then swap rel -->
+<link rel="preload" href="styles.css" as="style" onload="this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="styles.css"></noscript>
+<!-- Fabric + jsPDF deferred so they don't block first paint -->
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 #pp-boot {
   position: fixed;

@@ -457,7 +457,7 @@ html, body {
   z-index: 20;
   text-transform: uppercase;
   user-select: none;
-  animation: wmFade 3s ease-in-out infinite;
+  animation: none; /* wmFade removed — not visible to end user */
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
 }
 
@@ -1205,16 +1205,8 @@ select.pp-select:focus { border-color: rgba(0, 255, 156, 0.4); outline: none; }
   color: var(--text-soft);
 }
 
-/* ── PRO GLOW PULSE (1–2 elements only) ── */
-.pro-glow {
-  animation: glowPulse 2.5s infinite;
-}
-
-@keyframes glowPulse {
-  0%   { box-shadow: 0 0 0px rgba(0, 255, 156, 0); }
-  50%  { box-shadow: 0 0 10px rgba(0, 255, 156, 0.55); }
-  100% { box-shadow: 0 0 0px rgba(0, 255, 156, 0); }
-}
+/* ── PRO GLOW PULSE — removed, static is faster ── */
+/* .pro-glow { animation: glowPulse 2.5s infinite; } */
 
 /* ── SOCIAL PROOF LINE ── */
 .pp-proof {

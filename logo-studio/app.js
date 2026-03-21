@@ -1185,57 +1185,66 @@ function toggleSidebars() {
 
 /* ── RUN FAST PATH ── */
 /* Order: size → layout → cut → validate
+   Split across two setTimeout(0) frames so the main thread never blocks.
    Only processes the FIRST image — multi-image layout is undefined behaviour. */
 function runFastPath() {
   if (!canvas) return;
   var btn = document.getElementById('pp-snap');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Processing...'; }
+  toast('Processing...');
 
-  setTimeout(function() {
-    try {
-      // Ensure sticker mode so contour cut fires
-      if (STATE.mode !== 'sticker') setMode('sticker');
+  // Frame 1: hand back control immediately, then start work
+  setTimeout(function() { _fpProcessImages(btn); }, 0);
+}
 
-      // Find images
-      var images = canvas.getObjects().filter(function(o) {
-        return o.visible && !o._isSnapLine && !o._isSafeArea && !o._isCutLine && o.type === 'image';
-      });
+function _fpProcessImages(btn) {
+  try {
+    if (STATE.mode !== 'sticker') setMode('sticker');
 
-      if (!images.length) {
-        toast('No image ❌');
-        if (btn) { btn.disabled = false; btn.textContent = '⚡ PrintPath'; }
-        return;
-      }
+    var images = canvas.getObjects().filter(function(o) {
+      return o.visible && !o._isSnapLine && !o._isSafeArea && !o._isCutLine && o.type === 'image';
+    });
 
-      if (images.length > 1) toast('⚠ Multiple images — using first');
-
-      // 1. SIZE — snap first image to shop DPI target
-      snapToDPI(images[0]);
-
-      // 2. LAYOUT — center + fit to safe area
-      fastFinish();
-
-      // 3. CUT + VALIDATE (after fastFinish settles)
-      setTimeout(function() {
-        applyContourCut();
-        calcDPI();
-        calcTrueDPI();
-        updateLockState();
-
-        var check = validateForExport();
-        if (!check.ok) {
-          toast(check.reason + ' ❌');
-        } else {
-          toast('✔ ' + SHOP_DPI + ' DPI Ready');
-        }
-
-        if (btn) { btn.disabled = false; btn.textContent = '⚡ PrintPath'; }
-      }, 120);
-    } catch(err) {
-      console.warn('[runFastPath]', err);
+    if (!images.length) {
+      toast('No image ❌');
       if (btn) { btn.disabled = false; btn.textContent = '⚡ PrintPath'; }
+      return;
     }
-  }, 30);
+
+    if (images.length > 1) toast('⚠ Multiple images — using first');
+
+    // 1. SIZE
+    snapToDPI(images[0]);
+
+    // Frame 2: layout + cut + validate (after size reflow settles)
+    setTimeout(function() { _fpFinish(btn); }, 0);
+  } catch(err) {
+    console.warn('[runFastPath]', err);
+    if (btn) { btn.disabled = false; btn.textContent = '⚡ PrintPath'; }
+  }
+}
+
+function _fpFinish(btn) {
+  try {
+    // 2. LAYOUT
+    fastFinish();
+
+    // 3. CUT + VALIDATE (after fastFinish DOM settles)
+    setTimeout(function() {
+      applyContourCut();
+      calcDPI();
+      calcTrueDPI();
+      updateLockState();
+
+      var check = validateForExport();
+      toast(check.ok ? '✔ ' + SHOP_DPI + ' DPI Ready' : check.reason + ' ❌');
+
+      if (btn) { btn.disabled = false; btn.textContent = '⚡ PrintPath'; }
+    }, 0);
+  } catch(err) {
+    console.warn('[_fpFinish]', err);
+    if (btn) { btn.disabled = false; btn.textContent = '⚡ PrintPath'; }
+  }
 }
 
 /* ── SAVE / LOAD / RESET ── */
