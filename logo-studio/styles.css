@@ -1333,6 +1333,63 @@ select.pp-select:focus { border-color: rgba(0, 255, 156, 0.4); outline: none; }
   text-transform: uppercase;
 }
 
+/* ── FAST PATH BAR ── */
+.pp-fast-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  pointer-events: none;
+}
+#pp-snap {
+  pointer-events: all;
+  padding: 13px 36px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  border: none;
+  border-radius: 14px;
+  color: #000;
+  background: linear-gradient(90deg, #00eaff, #a855f7, #ff00ff);
+  cursor: pointer;
+  box-shadow: 0 4px 24px rgba(0,234,255,0.3);
+  transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s;
+  animation: ppSnapPulse 3s ease-in-out infinite;
+}
+#pp-snap:hover  { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,234,255,0.5); }
+#pp-snap:active { transform: translateY(0); }
+#pp-snap:disabled { opacity: 0.45; cursor: default; animation: none; }
+@keyframes ppSnapPulse {
+  0%, 100% { box-shadow: 0 4px 24px rgba(0,234,255,0.25); }
+  50%       { box-shadow: 0 6px 32px rgba(168,85,247,0.45); }
+}
+.pp-fast-bar-hint {
+  font-size: 9px;
+  color: rgba(255,255,255,0.22);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ── FOCUS MODE (Tab toggle) ── */
+.sidebar {
+  transition: width 0.22s cubic-bezier(0.4,0,0.2,1),
+              padding 0.22s cubic-bezier(0.4,0,0.2,1);
+}
+.studio-layout.pp-focus-mode {
+  grid-template-columns: 0 1fr 0;
+}
+.studio-layout.pp-focus-mode .sidebar {
+  width: 0;
+  padding: 0;
+  overflow: hidden;
+  border: none;
+}
+
 /* ── UPLOAD ZONE ── */
 .pp-upload-zone {
   display: flex;

@@ -59,10 +59,11 @@ window.addEventListener('load', function() {
   document.getElementById('img-upload').addEventListener('change', handleImageUpload);
   window.addEventListener('resize', fitCanvasToWindow);
 
-  // Drag-and-drop onto upload zone and canvas wrapper
+  // Drag-and-drop onto upload zone, canvas wrapper, and Fabric upper canvas
   var dropTargets = [
     document.getElementById('upload-zone'),
     document.querySelector('.canvas-wrapper'),
+    canvas.upperCanvasEl,
   ];
   dropTargets.forEach(function(el) {
     if (!el) return;
@@ -79,6 +80,14 @@ window.addEventListener('load', function() {
       var file = e.dataTransfer.files[0];
       if (file) handleImageUpload({ target: { files: [file], value: '' } });
     });
+  });
+
+  // Tab → toggle focus mode (collapse sidebars for distraction-free canvas)
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Tab' && !e.target.matches('input, textarea, select')) {
+      e.preventDefault();
+      document.querySelector('.studio-layout').classList.toggle('pp-focus-mode');
+    }
   });
 
   // Start in sticker mode — black canvas, contour cut ready
@@ -1111,6 +1120,39 @@ function fastFinish() {
 function _fastFinishDone(btn) {
   if (btn) { btn.disabled = false; btn.textContent = '✦ Finish with PrintPath'; }
   toast('Optimized by PrintPath');
+}
+
+/* ── RUN FAST PATH ── */
+/* One-click: upscale all images → center + fit → cut line → DPI */
+function runFastPath() {
+  if (!canvas) return;
+  var btn = document.getElementById('pp-snap');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Processing...'; }
+  setTimeout(function() {
+    try {
+      // 1. Ensure sticker mode so contour cut fires
+      if (STATE.mode !== 'sticker') setMode('sticker');
+      // 2. Auto-upscale every image to print resolution
+      canvas.getObjects().forEach(function(o) {
+        if (o.visible && !o._isSnapLine && !o._isSafeArea && !o._isCutLine && o.type === 'image')
+          autoUpscale(o);
+      });
+      // 3. Center, bump canvas size, fit to safe area
+      fastFinish();
+      // 4. Re-apply cut + DPI after fastFinish settles
+      setTimeout(function() {
+        applyContourCut();
+        calcDPI();
+        calcTrueDPI();
+        updateLockState();
+        if (btn) { btn.disabled = false; btn.textContent = '⚡ PrintPath'; }
+        toast('⚡ Print-ready in one click');
+      }, 120);
+    } catch(err) {
+      console.warn('[runFastPath]', err);
+      if (btn) { btn.disabled = false; btn.textContent = '⚡ PrintPath'; }
+    }
+  }, 30);
 }
 
 /* ── SAVE / LOAD / RESET ── */
