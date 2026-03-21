@@ -525,8 +525,14 @@ function calcDPI() {
 
 /* ── EXPORT ── */
 function exportDesign() {
-  if (!requirePro('Export')) return;
   if (!STATE.printReady) { toast('⚠ Cannot export — DPI below 300'); return; }
+
+  // Free users → upgrade modal, done
+  if (currentUser.plan !== 'pro') {
+    toast('♥ Pro tool — unlock to continue');
+    setTimeout(showUpgradeModal, 600);
+    return;
+  }
 
   var fmt     = document.querySelector('input[name="export-fmt"]:checked').value;
   var name    = document.getElementById('export-name').value || 'my-logo';
@@ -755,8 +761,8 @@ async function upgradeToPro() {
   if (params.get('pro') === 'success') {
     currentUser.plan = 'pro';
     localStorage.setItem('pp_plan', 'pro');
-    toast('\u2726 Pro unlocked \u2014 all tools available');
-    history.replaceState(null, '', window.location.pathname);
     updateWatermark();
+    history.replaceState(null, '', window.location.pathname);
+    toast('✦ Pro unlocked — all tools available');
   }
 })();
