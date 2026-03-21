@@ -137,6 +137,7 @@
         <div class="guide-h"   id="guide-h"></div>
         <div class="guide-v"   id="guide-v"></div>
         <div class="safe-area" id="safe-area"></div>
+        <!-- Watermark only shown on basic-plan shops (hidden for pro via applyShopPlan) -->
         <div class="pp-watermark" id="pp-watermark">PrintPath</div>
       </div>
     </div>
@@ -161,10 +162,6 @@
         <div class="tf-field"><label>W</label><input type="number" id="tf-w" onchange="applyTransform('w',this.value)"/></div>
         <div class="tf-field"><label>H</label><input type="number" id="tf-h" onchange="applyTransform('h',this.value)"/></div>
         <div class="tf-field tf-wide"><label>Rotation °</label><input type="number" id="tf-r" min="0" max="360" onchange="applyTransform('r',this.value)"/></div>
-      </div>
-      <div class="locked-tools-row">
-        <button class="tool-locked" onclick="requirePro('Resize &amp; Scale')" title="Resize for perfect print alignment (Pro)">⇲ Resize &amp; Scale</button>
-        <button class="tool-locked" onclick="requirePro('Align to Canvas')" title="Auto-align to print safe area (Pro)">⊞ Align to Canvas</button>
       </div>
     </div>
 
@@ -243,14 +240,6 @@
       </div>
     </div>
 
-    <div class="sidebar-section pp-locked-section">
-      <div class="sidebar-label">PRO TOOLS</div>
-      <div class="locked-tools-col">
-        <button class="tool-locked pro-glow" onclick="requirePro('Color Adjust')" title="Advanced CMYK color controls (Pro)">🎨 Color Adjust</button>
-        <button class="tool-locked" onclick="requirePro('Background Remove')" title="Remove background for clean print cutouts (Pro)">✂ Background Remove</button>
-      </div>
-    </div>
-
     <div class="sidebar-section">
       <div class="sidebar-label">DIE CUT <span class="mode-indicator" id="diecut-mode-label">— Logo</span></div>
       <!-- locked tool row injected above die-cut -->
@@ -313,13 +302,12 @@
           <input type="checkbox" id="export-diecut"/>
           <span>Include die-cut line</span>
         </label>
-        <div class="pp-proof">Most users unlock Pro to finish their design</div>
-        <button class="pp-btn pro-glow" id="export-btn" onclick="exportDesign()">✦ Use This Design</button>
+        <div class="pp-proof" style="display:none">Most users unlock Pro to finish their design</div>
+        <button class="pp-btn" id="export-btn" onclick="exportDesign()">✦ Use This Design</button>
         <div class="export-print-labels">
           <span class="print-label-tag">Print Ready</span>
           <span class="print-label-tag">300 DPI Locked</span>
         </div>
-        <div class="pp-export-hint" id="pp-export-hint">Clean export available with Pro</div>
         <div class="export-blocked" id="export-blocked" style="display:none">
           ⚠ DPI too low — increase canvas size or reduce output inches
         </div>
@@ -344,32 +332,33 @@
 <div class="pp-toast" id="pp-toast"></div>
 
 <!-- UPGRADE MODAL -->
-<div id="upgrade-modal" class="pp-upgrade hidden" onclick="if(event.target===this)closeUpgrade()">
+<!-- ADMIN UPGRADE BUTTON (only visible in ?admin=true mode) -->
+<button id="shop-admin-btn" class="shop-admin-btn" onclick="showShopUpgrade()" style="display:none">
+  ✦ Upgrade Shop Plan
+</button>
+
+<!-- SHOP UPGRADE MODAL (admin only) -->
+<div id="shop-upgrade-modal" class="pp-upgrade hidden" onclick="if(event.target===this)closeShopUpgrade()">
   <div class="pp-upgrade-box">
     <div class="pp-up-eyebrow">✦ PrintPath Pro</div>
-    <h2 class="pp-up-heading">Unlock Pro Tools</h2>
-    <p class="pp-up-sub">Make designs print-ready. Faster. Cleaner. Professional.</p>
-
+    <h2 class="pp-up-heading">Upgrade Your Shop</h2>
+    <p class="pp-up-sub">Unlock full design tools for your customers. They design it themselves — you just print it.</p>
     <ul class="pp-up-features">
-      <li>✔ 300 DPI Export — every file</li>
-      <li>✔ Die-Cut Sticker Mode</li>
-      <li>✔ Advanced Color Controls</li>
-      <li>✔ Resize &amp; Scale Tools</li>
-      <li>✔ Unlimited Exports</li>
+      <li>✔ Remove PrintPath watermark</li>
+      <li>✔ Advanced editing tools</li>
+      <li>✔ Perfect print scaling</li>
+      <li>✔ Die-cut &amp; sticker mode</li>
+      <li>✔ Faster customer flow</li>
     </ul>
-
     <div class="pp-up-price">
       <span class="pp-up-amount">$29</span>
       <span class="pp-up-per">/month</span>
     </div>
-
-    <button onclick="upgradeToPro()" class="pp-up-btn">Unlock Pro — $29/mo</button>
-    <button onclick="closeUpgrade()" class="pp-up-close">Not now</button>
-
+    <button onclick="upgradeShop()" class="pp-up-btn shop-up-btn">Upgrade Shop — $29/mo</button>
+    <button onclick="closeShopUpgrade()" class="pp-up-close">Not now</button>
     <div class="pp-up-trust">
-      <span>Used by print shops</span>
-      <span class="pp-up-dot">·</span>
-      <span>Print-ready output guaranteed</span>
+      <span>Used by print shops</span><span class="pp-up-dot">·</span>
+      <span>Cancel any time</span>
     </div>
   </div>
 </div>

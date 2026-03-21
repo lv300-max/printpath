@@ -1220,3 +1220,28 @@ select.pp-select:focus { border-color: rgba(0, 255, 156, 0.4); outline: none; }
   margin-bottom: 8px;
   font-style: italic;
 }
+
+/* ── SHOP ADMIN UPGRADE BUTTON (admin mode only) ── */
+.shop-admin-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 8000;
+  padding: 10px 16px;
+  background: linear-gradient(90deg, #00ff9c, #00cfff);
+  border: none;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #030d09;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0, 255, 156, 0.3);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.shop-admin-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+

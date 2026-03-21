@@ -40,7 +40,14 @@
   to     = "/logo-studio/index.html"
   status = 200
 
+
 [[redirects]]
   from   = "/create-subscription"
   to     = "/.netlify/functions/create-subscription"
   status = 200
+
+[[redirects]]
+  from   = "/create-shop-subscription"
+  to     = "/.netlify/functions/create-shop-subscription"
+  status = 200
+
