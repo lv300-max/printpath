@@ -119,6 +119,12 @@ html, body {
   border-color: rgba(255, 100, 0, 0.3);
 }
 
+.dpi-badge.bad {
+  background: rgba(255, 50, 50, 0.12);
+  color: #ff4d4d;
+  border-color: rgba(255, 50, 50, 0.35);
+}
+
 .header-trust {
   font-size: 10px;
   color: var(--text-dim);

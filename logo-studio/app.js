@@ -40,11 +40,12 @@ window.addEventListener('load', function() {
   canvas.on('selection:created', onSelect);
   canvas.on('selection:updated', onSelect);
   canvas.on('selection:cleared', onDeselect);
-  canvas.on('object:modified', function() { _clearSnapLines(); renderLayers(); updateTransformFields(); applyContourCut(); });
+  canvas.on('object:modified', function() { _clearSnapLines(); renderLayers(); updateTransformFields(); applyContourCut(); calcDPI(); });
   canvas.on('object:moving', onObjectMoving);
-  canvas.on('mouse:up', function() { _clearSnapLines(); });
-  canvas.on('object:added', function() { renderLayers(); applyContourCut(); });
-  canvas.on('object:removed', function() { renderLayers(); applyContourCut(); });
+  canvas.on('mouse:up', function() { _clearSnapLines(); calcDPI(); });
+  canvas.on('object:scaling', function() { calcDPI(); });
+  canvas.on('object:added', function() { renderLayers(); applyContourCut(); calcDPI(); });
+  canvas.on('object:removed', function() { renderLayers(); applyContourCut(); calcDPI(); });
 
   document.addEventListener('keydown', handleKey);
   document.getElementById('img-upload').addEventListener('change', handleImageUpload);
@@ -588,9 +589,11 @@ function snapEngine(obj) {
 function onObjectMoving(e) {
   if (!document.getElementById('snap-enabled').checked) {
     _clearSnapLines();
+    calcDPI();
     return;
   }
   snapEngine(e.target);
+  calcDPI();
 }
 
 /* ── DIE CUT ── */
@@ -719,31 +722,66 @@ function applyDieCut() {
   sa.style.borderRadius = STATE.dieCutShape === 'circle' ? '50%' : STATE.dieCutShape === 'rounded' ? '12%' : '0';
 }
 
-/* ── DPI ── */
+/* ── DPI ENGINE ── */
 function calcDPI() {
-  var iw  = parseFloat(document.getElementById('inches-w').value) || 3;
-  var ih  = parseFloat(document.getElementById('inches-h').value) || 3;
-  var dpi = Math.round(Math.min(STATE.artboardW / iw, STATE.artboardH / ih));
+  var iw = parseFloat(document.getElementById('inches-w').value) || 3;
+  var ih = parseFloat(document.getElementById('inches-h').value) || 3;
+
+  // Measure actual design bounds — ignore snap lines, safe area overlay, cut line
+  var objs = canvas ? canvas.getObjects().filter(function(o) {
+    return o.visible && !o._isSnapLine && !o._isSafeArea && !o._isCutLine;
+  }) : [];
+
+  var pxW, pxH;
+  if (objs.length > 0) {
+    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    objs.forEach(function(o) {
+      var b = o.getBoundingRect(true);
+      minX = Math.min(minX, b.left);
+      minY = Math.min(minY, b.top);
+      maxX = Math.max(maxX, b.left + b.width);
+      maxY = Math.max(maxY, b.top  + b.height);
+    });
+    pxW = maxX - minX;
+    pxH = maxY - minY;
+  } else {
+    pxW = STATE.artboardW;
+    pxH = STATE.artboardH;
+  }
+
+  var dpi = Math.round(Math.min(pxW / iw, pxH / ih));
   STATE.dpi        = dpi;
   STATE.printReady = dpi >= 300;
 
-  document.getElementById('dpi-number').textContent  = dpi;
-  document.getElementById('pi-output').textContent   = iw + ' × ' + ih + ' in';
+  var numEl    = document.getElementById('dpi-number');
+  var outEl    = document.getElementById('pi-output');
+  var statusEl = document.getElementById('dpi-status');
+  var displayEl= document.getElementById('dpi-display');
+  var badgeEl  = document.getElementById('dpi-badge');
+  var exportBtn     = document.getElementById('export-btn');
+  var exportBlocked = document.getElementById('export-blocked');
 
-  if (STATE.printReady) {
-    document.getElementById('dpi-status').textContent  = '✦ Print Ready';
-    document.getElementById('dpi-display').className   = 'dpi-display';
-    document.getElementById('dpi-badge').className     = 'dpi-badge ready';
-    document.getElementById('dpi-badge').textContent   = dpi + ' DPI ✓';
-    document.getElementById('export-btn').disabled     = false;
-    document.getElementById('export-blocked').style.display = 'none';
+  if (numEl)  numEl.textContent  = dpi;
+  if (outEl)  outEl.textContent  = iw + ' × ' + ih + ' in';
+
+  if (dpi >= 300) {
+    if (statusEl)  statusEl.textContent = '✦ Print Ready';
+    if (displayEl) displayEl.className  = 'dpi-display';
+    if (badgeEl) { badgeEl.className = 'dpi-badge ready'; badgeEl.textContent = dpi + ' DPI ✓'; }
+    if (exportBtn)     exportBtn.disabled = false;
+    if (exportBlocked) exportBlocked.style.display = 'none';
+  } else if (dpi >= 150) {
+    if (statusEl)  statusEl.textContent = '⚠ Low — Scale Up';
+    if (displayEl) displayEl.className  = 'dpi-display warn';
+    if (badgeEl) { badgeEl.className = 'dpi-badge warn'; badgeEl.textContent = dpi + ' DPI ⚠'; }
+    if (exportBtn)     exportBtn.disabled = true;
+    if (exportBlocked) exportBlocked.style.display = 'block';
   } else {
-    document.getElementById('dpi-status').textContent  = '⚠ Below 300 DPI';
-    document.getElementById('dpi-display').className   = 'dpi-display warn';
-    document.getElementById('dpi-badge').className     = 'dpi-badge warn';
-    document.getElementById('dpi-badge').textContent   = dpi + ' DPI ✗';
-    document.getElementById('export-btn').disabled     = true;
-    document.getElementById('export-blocked').style.display = 'block';
+    if (statusEl)  statusEl.textContent = '✕ Too Low';
+    if (displayEl) displayEl.className  = 'dpi-display warn';
+    if (badgeEl) { badgeEl.className = 'dpi-badge bad'; badgeEl.textContent = dpi + ' DPI ✕'; }
+    if (exportBtn)     exportBtn.disabled = true;
+    if (exportBlocked) exportBlocked.style.display = 'block';
   }
 }
 
