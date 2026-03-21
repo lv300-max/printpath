@@ -436,18 +436,50 @@ html, body {
   transition: all 0.2s ease;
 }
 
-.canvas-watermark {
+/* Old .canvas-watermark replaced by .pp-watermark */
+
+/* ── PRO WATERMARK OVERLAY ── */
+.pp-watermark {
   position: absolute;
-  bottom: 8px;
-  right: 10px;
-  font-size: 9px;
+  bottom: 12px;
+  right: 14px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  color: rgba(255,255,255,0.08);
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.22);
   pointer-events: none;
-  z-index: 5;
+  z-index: 20;
   text-transform: uppercase;
+  user-select: none;
+  animation: wmFade 3s ease-in-out infinite;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
 }
+
+.pp-watermark::after {
+  content: ' • Unlock for Print';
+  color: rgba(0, 255, 156, 0.55);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+@keyframes wmFade {
+  0%   { opacity: 0.6; }
+  50%  { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+/* ── EXPORT HINT LINE ── */
+.pp-export-hint {
+  font-size: 10px;
+  color: rgba(0, 255, 156, 0.55);
+  text-align: center;
+  letter-spacing: 0.05em;
+  margin-top: 6px;
+  font-weight: 600;
+}
+
+.pp-export-hint.hidden { display: none; }
 
 .canvas-statusbar {
   height: 26px;

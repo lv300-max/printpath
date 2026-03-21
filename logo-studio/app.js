@@ -692,6 +692,22 @@ var currentUser = {
   plan: localStorage.getItem('pp_plan') || 'free',
 };
 
+function updateWatermark() {
+  var wm   = document.getElementById('pp-watermark');
+  var hint = document.getElementById('pp-export-hint');
+  if (!wm) return;
+  if (currentUser.plan === 'pro') {
+    wm.style.display = 'none';
+    if (hint) hint.classList.add('hidden');
+  } else {
+    wm.style.display = 'block';
+    if (hint) hint.classList.remove('hidden');
+  }
+}
+
+// Run on load
+updateWatermark();
+
 function requirePro(featureName) {
   if (currentUser.plan === 'pro') return true;
   toast('\u2665 Pro tool \u2014 unlock to continue');
@@ -740,7 +756,7 @@ async function upgradeToPro() {
     currentUser.plan = 'pro';
     localStorage.setItem('pp_plan', 'pro');
     toast('\u2726 Pro unlocked \u2014 all tools available');
-    // Clean URL
     history.replaceState(null, '', window.location.pathname);
+    updateWatermark();
   }
 })();
