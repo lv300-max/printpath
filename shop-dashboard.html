@@ -69,7 +69,7 @@
     ============================================================ */
     .shell {
       display: grid;
-      grid-template-rows: var(--header-h) var(--urgency-h) 1fr;
+      grid-template-rows: var(--header-h) var(--urgency-h) auto 1fr;
       height: 100dvh;
       overflow: hidden;
     }
@@ -1020,6 +1020,170 @@
     .toast .purple { background: var(--purple); }
     .toast .danger { background: var(--danger); }
 
+    /* ============================================================
+       DESIGNS SECTION
+    ============================================================ */
+    .designs-bar {
+      background: rgba(0,229,160,0.04);
+      border-bottom: 1px solid rgba(0,229,160,0.1);
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.74rem;
+      font-weight: 500;
+      color: var(--text-2);
+    }
+
+    .designs-bar-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 10px rgba(0,229,160,0.5);
+      animation: livePulse 2s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+
+    .designs-bar strong { color: var(--accent); }
+
+    .designs-section {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .design-stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .ds-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      transition: border-color var(--t) var(--ease);
+    }
+
+    .ds-card:hover { border-color: var(--border-hi); }
+
+    .ds-card-label {
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 5px;
+    }
+
+    .ds-card-val {
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      color: var(--text);
+    }
+
+    .ds-card-val.green  { color: var(--accent); }
+    .ds-card-val.purple { color: var(--purple); }
+
+    .ds-card-sub {
+      font-size: 0.6rem;
+      color: var(--text-3);
+      margin-top: 4px;
+    }
+
+    .designs-sub-header {
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 8px;
+    }
+
+    .design-thumbs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .design-thumb {
+      width: 62px;
+      height: 62px;
+      border-radius: 8px;
+      background: var(--bg-raised);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      position: relative;
+      cursor: pointer;
+      transition: border-color var(--t) var(--ease), transform 0.15s var(--ease);
+      flex-shrink: 0;
+    }
+
+    .design-thumb:hover {
+      border-color: var(--accent);
+      transform: scale(1.06);
+    }
+
+    .design-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .design-thumb-used::after {
+      content: '✔';
+      position: absolute;
+      bottom: 3px; right: 3px;
+      width: 15px; height: 15px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #030d09;
+      font-size: 8px;
+      font-weight: 900;
+      display: grid;
+      place-items: center;
+    }
+
+    .design-thumb-empty {
+      display: grid;
+      place-items: center;
+      font-size: 1.4rem;
+      color: var(--text-3);
+    }
+
+    .system-status {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 10px 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      margin-top: 12px;
+    }
+
+    .sys-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: var(--text-2);
+    }
+
+    .sys-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .sys-dot.ok     { background: var(--accent); box-shadow: 0 0 6px rgba(0,229,160,0.5); }
+    .sys-dot.warn   { background: var(--warn); }
+    .sys-dot.off    { background: var(--text-3); }
+
   </style>
 </head>
 <body>
@@ -1083,12 +1247,52 @@
   </div>
 
   <!-- ============================================================
+       DESIGNS BAR — real-time activity line
+  ============================================================ -->
+  <div class="designs-bar" id="designs-bar">
+    <div class="designs-bar-dot"></div>
+    <span>Customers are designing in real time &nbsp;&mdash;&nbsp; <strong id="designs-bar-count">0 designs</strong> created so far today</span>
+  </div>
+
+  <!-- ============================================================
        MAIN
   ============================================================ -->
   <div class="main">
 
     <!-- LEFT — LIVE ORDERS -->
     <div class="panel-left" id="panel-left">
+
+      <!-- DESIGNS STATS -->
+      <div class="designs-section">
+        <div class="design-stats-row">
+          <div class="ds-card">
+            <div class="ds-card-label">Designs Created</div>
+            <div class="ds-card-val" id="stat-created">0</div>
+            <div class="ds-card-sub">all time</div>
+          </div>
+          <div class="ds-card">
+            <div class="ds-card-label">Used in Orders</div>
+            <div class="ds-card-val green" id="stat-used">0</div>
+            <div class="ds-card-sub">converted</div>
+          </div>
+          <div class="ds-card">
+            <div class="ds-card-label">Conversion</div>
+            <div class="ds-card-val purple" id="stat-conversion">0%</div>
+            <div class="ds-card-sub">designs → orders</div>
+          </div>
+        </div>
+
+        <div class="designs-sub-header">Recent Designs</div>
+        <div class="design-thumbs" id="design-list"></div>
+
+        <div class="system-status">
+          <div class="sys-item"><div class="sys-dot ok"></div> Editor Active</div>
+          <div class="sys-item"><div class="sys-dot ok"></div> 300 DPI Locked</div>
+          <div class="sys-item"><div class="sys-dot ok"></div> Cart Attach On</div>
+          <div class="sys-item" id="sys-embed-status"><div class="sys-dot ok"></div> Embed Live</div>
+        </div>
+      </div>
+
       <div class="section-header">
         <span class="section-title">Live Orders</span>
         <span class="section-badge" id="orders-badge">0 active</span>
@@ -1559,6 +1763,7 @@ function init() {
   renderOrders();
   renderFeed();
   updateStats();
+  loadDashboard();
 
   // Tick timers every second
   setInterval(tickTimers, 1000);
@@ -1580,6 +1785,87 @@ function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+/* ============================================================
+   DESIGN TRACKING — connect to editor via localStorage
+============================================================ */
+function loadDashboard() {
+  const designs = JSON.parse(localStorage.getItem('pp_designs')) || [];
+
+  const created    = designs.length;
+  const used       = designs.filter(d => d.used).length;
+  const conversion = created > 0 ? Math.round((used / created) * 100) : 0;
+
+  $('stat-created').textContent    = created;
+  $('stat-used').textContent       = used;
+  $('stat-conversion').textContent = conversion + '%';
+
+  // Real-time bar count
+  const todayKey = new Date().toDateString();
+  const todayDesigns = designs.filter(d => d.date === todayKey);
+  const barCount = todayDesigns.length || created;
+  $('designs-bar-count').textContent = barCount + (barCount === 1 ? ' design' : ' designs');
+
+  // Recent thumbnails — last 10
+  const list = $('design-list');
+  list.innerHTML = '';
+
+  const recent = designs.slice(-10).reverse();
+
+  if (recent.length === 0) {
+    // Placeholder slots
+    for (let i = 0; i < 5; i++) {
+      const div = document.createElement('div');
+      div.className = 'design-thumb design-thumb-empty';
+      div.title = 'No design yet';
+      div.textContent = '+';
+      list.appendChild(div);
+    }
+  } else {
+    recent.forEach(d => {
+      const div = document.createElement('div');
+      div.className = 'design-thumb' + (d.used ? ' design-thumb-used' : '');
+      div.title     = d.used ? 'Used in order' : 'Created, not yet ordered';
+      if (d.image && d.image.startsWith('data:')) {
+        const img = document.createElement('img');
+        img.src = d.image;
+        img.alt = 'Design';
+        div.appendChild(img);
+      } else {
+        div.classList.add('design-thumb-empty');
+        div.textContent = '\u2726';
+      }
+      list.appendChild(div);
+    });
+  }
+}
+
+/* Called when a design is created in the editor */
+function trackDesign(imageData) {
+  let designs = JSON.parse(localStorage.getItem('pp_designs')) || [];
+  designs.push({
+    image: imageData,
+    used: false,
+    date: new Date().toDateString(),
+    ts: Date.now(),
+  });
+  localStorage.setItem('pp_designs', JSON.stringify(designs));
+  loadDashboard();
+  addFeedItem({ color: 'green', main: 'New design created', sub: 'just now' });
+}
+
+/* Called when a design is attached to an order */
+function markDesignUsed(imageData) {
+  let designs = JSON.parse(localStorage.getItem('pp_designs')) || [];
+  designs = designs.map(d => {
+    if (d.image === imageData) d.used = true;
+    return d;
+  });
+  localStorage.setItem('pp_designs', JSON.stringify(designs));
+  loadDashboard();
+  updateStats();
+  addFeedItem({ color: 'purple', main: 'Design used in order', sub: 'just now' });
+}
 </script>
 </body>
 </html>
